@@ -6,3 +6,8 @@
 .env.*
 !.env.example
 application-local.yml
+**/node_modules/
+**/dist/
+**/.vite/
+**/.playwright-cli/
+**/output/playwright/
