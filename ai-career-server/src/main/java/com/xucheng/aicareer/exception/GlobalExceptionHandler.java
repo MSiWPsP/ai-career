@@ -18,6 +18,12 @@ public class GlobalExceptionHandler {
         return Result.error(exception.getCode(), exception.getMessage());
     }
 
+    @ExceptionHandler(AiServiceException.class)
+    public Result<Void> handleAiServiceException(AiServiceException exception) {
+        log.error("AI服务调用失败", exception);
+        return Result.error(5001, "AI服务暂时不可用，请稍后重试");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()

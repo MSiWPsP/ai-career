@@ -1,14 +1,20 @@
 package com.xucheng.aicareer.controller;
 
 import com.xucheng.aicareer.common.Result;
+import com.xucheng.aicareer.dto.CareerChatDTO;
+import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerPlanService;
+import com.xucheng.aicareer.vo.CareerChatVO;
 import com.xucheng.aicareer.vo.CareerPlanVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,6 +28,13 @@ import java.util.List;
 public class CareerController {
 
     private final CareerPlanService careerPlanService;
+    private final CareerChatService careerChatService;
+
+    @PostMapping("/chat")
+    @Operation(summary = "与AI职业规划师普通聊天", description = "当前版本为单轮非流式聊天，暂不包含ChatMemory、Tool Calling或RAG")
+    public Result<CareerChatVO> chat(@Valid @RequestBody CareerChatDTO chatDTO) {
+        return Result.success(careerChatService.chat(chatDTO));
+    }
 
     @GetMapping("/plan/current")
     @Operation(summary = "获取当前职业规划")

@@ -87,6 +87,15 @@ export interface CareerPlan {
   updateTime?: string
 }
 
+export interface CareerChatPayload {
+  message: string
+}
+
+export interface CareerChatResponse {
+  conversationId: string
+  content: string
+}
+
 export interface CareerTask {
   id: number
   careerPlanId: number

@@ -7,15 +7,26 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
-
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
+  ai:
+    model:
+      chat: openai
+    openai:
+      base-url: ${AI_BASE_URL:https://ws-o9lujwrkuwzjfx0k.cn-beijing.maas.aliyuncs.com/compatible-mode/v1}
+      api-key: ${AI_API_KEY:not-configured}
+      timeout: ${AI_TIMEOUT:60s}
+      max-retries: ${AI_MAX_RETRIES:1}
+      chat:
+        model: ${AI_MODEL:qwen3.7-plus}
+        temperature: ${AI_TEMPERATURE:0.4}
 
 app:
   jwt:
     secret: ${JWT_SECRET:ai-career-dev-jwt-secret-key-change-in-production-2026}
     expiration-millis: ${JWT_EXPIRATION_MILLIS:604800000}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
 
 aliyun:
   oss:
