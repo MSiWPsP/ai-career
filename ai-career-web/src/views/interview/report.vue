@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { ChatDotRound, CircleCheck, MagicStick, Warning } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getInterview, getInterviewReport } from '../../api/interview'
 import AbilityRadar from '../../components/AbilityRadar.vue'
@@ -83,19 +84,19 @@ onMounted(async () => {
 
       <section class="analysis-grid">
         <article class="surface-card analysis-card advantages">
-          <div class="analysis-title"><span>✓</span><div><h2>本次表现较好的部分</h2><p>继续保持并迁移到更多场景</p></div></div>
+          <div class="analysis-title"><el-icon><CircleCheck /></el-icon><div><h2>本次表现较好的部分</h2><p>继续保持并迁移到更多场景</p></div></div>
           <ul><li v-for="item in report.advantages" :key="item">{{ item }}</li></ul>
           <p v-if="!report.advantages.length" class="empty-copy">暂无优势分析</p>
         </article>
         <article class="surface-card analysis-card weaknesses">
-          <div class="analysis-title"><span>!</span><div><h2>需要重点提升</h2><p>下一阶段优先突破这些短板</p></div></div>
+          <div class="analysis-title"><el-icon><Warning /></el-icon><div><h2>需要重点提升</h2><p>下一阶段优先突破这些短板</p></div></div>
           <ul><li v-for="item in report.weaknesses" :key="item">{{ item }}</li></ul>
           <p v-if="!report.weaknesses.length" class="empty-copy">暂无薄弱项分析</p>
         </article>
       </section>
 
       <section class="surface-card suggestion-card">
-        <div class="suggestion-title"><span>✦</span><div><p>AI 学习建议</p><h2>把复盘转化为下一步行动</h2></div></div>
+        <div class="suggestion-title"><el-icon><MagicStick /></el-icon><div><p>AI 学习建议</p><h2>把复盘转化为下一步行动</h2></div></div>
         <div v-if="report.suggestions.length" class="suggestion-list">
           <article v-for="item in report.suggestions" :key="item.topic + item.content">
             <div><strong>{{ item.topic }}</strong><el-tag :type="item.priority === 'HIGH' ? 'danger' : 'warning'" size="small">{{ item.priority }}</el-tag></div>
@@ -107,12 +108,12 @@ onMounted(async () => {
 
       <section class="replan-banner">
         <div><span>形成成长闭环</span><strong>根据本次面试表现，动态调整职业规划</strong></div>
-        <el-button type="primary" size="large" disabled>✨ 调整职业规划 · 待接入</el-button>
+        <el-button type="primary" size="large" :icon="MagicStick" disabled>调整职业规划 · 待接入</el-button>
       </section>
     </template>
 
     <section v-else-if="!loading" class="surface-card empty-panel report-empty">
-      <div><span class="empty-icon">◇</span><strong>面试报告尚未生成</strong><p>面试结束与报告生成接口完成后，完整分析会展示在这里。</p></div>
+      <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>面试报告尚未生成</strong><p>面试结束与报告生成接口完成后，完整分析会展示在这里。</p></div>
     </section>
   </div>
 </template>
@@ -138,16 +139,16 @@ onMounted(async () => {
 .score-list strong { color: var(--primary); text-align: right; }
 .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .analysis-title { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
-.analysis-title > span { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; }
-.advantages .analysis-title > span { color: var(--success); background: var(--success-soft); }
-.weaknesses .analysis-title > span { color: var(--warning); background: var(--warning-soft); }
+.analysis-title > .el-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; }
+.advantages .analysis-title > .el-icon { color: var(--success); background: var(--success-soft); }
+.weaknesses .analysis-title > .el-icon { color: var(--warning); background: var(--warning-soft); }
 .analysis-title h2 { margin: 0; font-size: 16px; }
 .analysis-title p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 .analysis-card ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .analysis-card li { padding: 10px 13px; border-radius: 9px; background: #fafafa; color: #555a6e; font-size: 12px; }
 .suggestion-card { margin-top: 20px; }
 .suggestion-title { display: flex; align-items: center; gap: 13px; }
-.suggestion-title > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #575bd8, #8672e7); }
+.suggestion-title > .el-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #575bd8, #8672e7); }
 .suggestion-title p { margin: 0 0 3px; color: var(--primary); font-size: 11px; font-weight: 800; }
 .suggestion-title h2 { margin: 0; font-size: 17px; }
 .suggestion-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 20px; }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { TrendCharts } from '@element-plus/icons-vue'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { init, use, type ECharts, type EChartsCoreOption } from 'echarts/core'
@@ -76,7 +77,7 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="data.records.length" ref="chartRef" class="trend-chart" :style="{ height: height + 'px' }" />
   <div v-else class="chart-empty">
-    <span class="empty-icon">⌁</span>
+    <el-icon class="empty-icon"><TrendCharts /></el-icon>
     <strong>还没有趋势数据</strong>
     <small>同一项能力产生多次评分后，会形成清晰的成长曲线。</small>
   </div>

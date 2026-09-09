@@ -51,4 +51,7 @@ export const request = {
   put<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
     return unwrap(instance.put<ApiResult<T>>(url, data, config))
   },
+  delete<T>(url: string, config?: RequestConfig): Promise<T> {
+    return unwrap(instance.delete<ApiResult<T>>(url, config))
+  },
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { ChatDotRound, Service } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import { getInterview, getInterviewMessages } from '../../api/interview'
@@ -31,7 +32,7 @@ function submitAnswer() {
 <template>
   <section class="surface-card interview-room" v-loading="loading">
     <header class="interview-bar">
-      <div><span class="ai-avatar">AI</span><div><strong>{{ detail?.targetPosition || 'AI 模拟面试' }}</strong><p>{{ interviewTypeLabel[detail?.interviewType || 'TECHNICAL'] }} · {{ difficultyLabel[detail?.difficulty || 'MEDIUM'] }}</p></div></div>
+      <div><el-icon class="ai-avatar"><Service /></el-icon><div><strong>{{ detail?.targetPosition || 'AI 模拟面试' }}</strong><p>{{ interviewTypeLabel[detail?.interviewType || 'TECHNICAL'] }} · {{ difficultyLabel[detail?.difficulty || 'MEDIUM'] }}</p></div></div>
       <div class="interview-progress"><span>当前进度</span><strong>{{ detail?.questionCount || 0 }} 题</strong></div>
       <el-button type="danger" plain disabled>结束面试</el-button>
     </header>
@@ -39,12 +40,12 @@ function submitAnswer() {
     <div class="message-area">
       <template v-if="messages.length">
         <article v-for="item in messages" :key="item.id" class="message" :class="item.role">
-          <span>{{ item.role === 'user' ? '我' : 'AI' }}</span>
+          <span><template v-if="item.role === 'user'">我</template><el-icon v-else><Service /></el-icon></span>
           <div><small>{{ item.role === 'user' ? '你的回答' : 'AI 面试官' }}</small><p>{{ item.content }}</p></div>
         </article>
       </template>
       <div v-else class="empty-panel">
-        <div><span class="empty-icon">◇</span><strong>面试会话等待开始</strong><span>启动与回答接口完成后，这里将呈现真实的多轮面试过程。</span></div>
+        <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>面试会话等待开始</strong><span>启动与回答接口完成后，这里将呈现真实的多轮面试过程。</span></div>
       </div>
     </div>
 

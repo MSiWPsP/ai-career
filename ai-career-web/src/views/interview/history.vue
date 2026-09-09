@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { ChatDotRound } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { getInterviewHistory } from '../../api/interview'
 import type { InterviewHistoryRecord } from '../../types/api'
@@ -62,7 +63,7 @@ function statusInfo(status: number) {
       <template v-if="records.length">
         <article v-for="item in records" :key="item.id" class="interview-item">
           <div class="date-block"><strong>{{ formatDate(item.createTime).slice(5) }}</strong><span>{{ formatDate(item.createTime).slice(0, 4) }}</span></div>
-          <div class="interview-icon">◇</div>
+          <el-icon class="interview-icon"><ChatDotRound /></el-icon>
           <div class="interview-info">
             <h3>{{ item.targetPosition }}</h3>
             <p>
@@ -80,7 +81,7 @@ function statusInfo(status: number) {
         </article>
       </template>
       <div v-else class="empty-panel">
-        <div><span class="empty-icon">◇</span><strong>还没有模拟面试记录</strong><p>完成一次 AI 模拟面试，系统会为你沉淀完整对话和能力报告。</p><el-button type="primary" @click="router.push('/interview/setup')">准备第一次面试</el-button></div>
+        <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>还没有模拟面试记录</strong><p>完成一次 AI 模拟面试，系统会为你沉淀完整对话和能力报告。</p><el-button type="primary" @click="router.push('/interview/setup')">准备第一次面试</el-button></div>
       </div>
       <footer v-if="total > pageSize" class="pagination">
         <el-pagination v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="load" />

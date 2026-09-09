@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as authApi from '../api/auth'
-import type { LoginPayload, LoginResponse, RegisterPayload } from '../types/api'
+import type { LoginPayload, LoginResponse, RegisterPayload, UserInfo } from '../types/api'
 import { tokenStorage, userStorage } from '../utils/storage'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -28,5 +28,15 @@ export const useAuthStore = defineStore('auth', () => {
     userStorage.clear()
   }
 
-  return { token, session, isAuthenticated, authenticate, createAccount, logout }
+  function syncCurrentUser(user: UserInfo) {
+    if (!session.value) return
+    session.value = {
+      ...session.value,
+      nickname: user.nickname,
+      avatar: user.avatar,
+    }
+    userStorage.set(session.value)
+  }
+
+  return { token, session, isAuthenticated, authenticate, createAccount, logout, syncCurrentUser }
 })

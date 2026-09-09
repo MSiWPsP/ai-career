@@ -139,7 +139,7 @@ a {
   transition: 0.2s ease;
 }
 
-.nav-item span {
+.nav-item .el-icon {
   width: 20px;
   color: #aeb4ed;
   font-size: 18px;
@@ -165,12 +165,12 @@ a {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.sidebar-user strong,
-.sidebar-user span {
+.sidebar-user > div strong,
+.sidebar-user > div span {
   display: block;
 }
 
-.sidebar-user strong {
+.sidebar-user > div strong {
   overflow: hidden;
   color: #fff;
   font-size: 14px;
@@ -178,10 +178,37 @@ a {
   white-space: nowrap;
 }
 
-.sidebar-user span {
+.sidebar-user > div span {
   margin-top: 3px;
   color: #8f96b7;
   font-size: 11px;
+}
+
+.sidebar-avatar {
+  position: relative;
+  display: block;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sidebar-avatar-edit {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border: 2px solid #22254a;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--primary);
+  font-size: 9px;
 }
 
 .logout-button,
@@ -193,8 +220,14 @@ a {
 }
 
 .logout-button {
+  display: grid;
+  place-items: center;
   color: #969cbb;
   font-size: 18px;
+}
+
+.logout-button:hover {
+  color: #fff;
 }
 
 .shell-content {
@@ -244,6 +277,165 @@ a {
   color: var(--primary);
   background: var(--primary-soft);
   font-size: 20px;
+}
+
+.icon-button:hover {
+  color: #fff;
+  background: var(--primary);
+}
+
+.avatar-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 4px 3px 3px;
+  border: 0;
+  border-radius: 20px;
+  color: #4e5268;
+  background: transparent;
+  cursor: pointer;
+}
+
+.avatar-menu-trigger:hover {
+  background: #f3f4fa;
+}
+
+.avatar-menu-trigger > span {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-menu-trigger > .el-icon {
+  margin-right: 3px;
+  color: #9a9eb2;
+  font-size: 12px;
+}
+
+.notification-popper.el-popover {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(43, 47, 89, 0.16);
+}
+
+.notification-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notification-panel > header div {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.notification-panel > header strong {
+  font-size: 15px;
+}
+
+.notification-panel > header span,
+.notification-panel > header button {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.notification-panel > header button {
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--primary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.notification-panel > header button:hover {
+  background: var(--primary-soft);
+}
+
+.notification-list > button {
+  position: relative;
+  display: grid;
+  width: 100%;
+  grid-template-columns: 8px 1fr;
+  gap: 10px;
+  padding: 15px 18px;
+  border: 0;
+  border-bottom: 1px solid #f0f1f6;
+  background: #fafaff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notification-list > button:hover {
+  background: #f4f5ff;
+}
+
+.notification-list > button.read {
+  background: #fff;
+}
+
+.notification-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.notification-list > button.read .notification-dot {
+  background: #d5d7e2;
+}
+
+.notification-list strong,
+.notification-list small {
+  display: block;
+}
+
+.notification-list strong {
+  margin-bottom: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.notification-list small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.notification-empty {
+  display: grid;
+  min-height: 190px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 30px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.notification-empty .el-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: 22px;
+}
+
+.notification-empty strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.notification-empty span {
+  font-size: 11px;
 }
 
 .mobile-menu {
@@ -423,9 +615,14 @@ a {
     padding-left: 18px;
   }
 
-  .topbar-actions > span:last-child,
+  .avatar-menu-trigger > span,
+  .avatar-menu-trigger > .el-icon,
   .breadcrumb {
     display: none;
+  }
+
+  .avatar-menu-trigger {
+    padding: 0;
   }
 
   .page-heading {

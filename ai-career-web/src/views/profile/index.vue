@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { Cpu, MagicStick, Monitor } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createProfile, getProfile, getProfileCompletion, updateProfile } from '../../api/profile'
 import { getSkills, replaceSkills } from '../../api/skill'
@@ -60,9 +61,9 @@ const rules: FormRules = {
 }
 
 const interests = [
-  { icon: '⌘', title: 'Java后端开发', desc: 'Web 服务、业务系统与中间件' },
-  { icon: '◇', title: 'Web前端开发', desc: 'Vue、React 与交互开发' },
-  { icon: '✦', title: 'AI应用开发', desc: 'Agent、RAG 与大模型应用' },
+  { icon: Cpu, title: 'Java后端开发', desc: 'Web 服务、业务系统与中间件' },
+  { icon: Monitor, title: 'Web前端开发', desc: 'Vue、React 与交互开发' },
+  { icon: MagicStick, title: 'AI应用开发', desc: 'Agent、RAG 与大模型应用' },
 ]
 
 const selectedSkillCount = computed(() => Object.values(skillLevels).filter((level) => level > 0).length)
@@ -195,7 +196,7 @@ async function save() {
               :class="{ selected: form.interestDescription === item.title }"
               @click="chooseInterest(item.title)"
             >
-              <span>{{ item.icon }}</span><strong>{{ item.title }}</strong><small>{{ item.desc }}</small>
+              <el-icon class="interest-icon"><component :is="item.icon" /></el-icon><strong>{{ item.title }}</strong><small>{{ item.desc }}</small>
             </button>
           </div>
           <el-form-item label="补充描述">
@@ -330,10 +331,10 @@ async function save() {
   transform: translateY(-2px);
 }
 
-.interest-card span,
+.interest-card .interest-icon,
 .interest-card strong,
 .interest-card small { display: block; }
-.interest-card span { color: var(--primary); font-size: 27px; }
+.interest-card .interest-icon { color: var(--primary); font-size: 27px; }
 .interest-card strong { margin: 16px 0 7px; font-size: 15px; }
 .interest-card small { color: var(--muted); line-height: 1.5; }
 

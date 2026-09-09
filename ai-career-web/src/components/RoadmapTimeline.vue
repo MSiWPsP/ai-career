@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TrendCharts } from '@element-plus/icons-vue'
 import type { RoadmapStage } from '../types/api'
 
 defineProps<{ stages: RoadmapStage[] }>()
@@ -25,7 +26,7 @@ defineProps<{ stages: RoadmapStage[] }>()
   </div>
   <div v-else class="empty-panel">
     <div>
-      <span class="empty-icon">↗</span>
+      <el-icon class="empty-icon"><TrendCharts /></el-icon>
       <strong>成长路线等待生成</strong>
       <span>完善职业画像后，AI 将为你拆解阶段性成长目标。</span>
     </div>

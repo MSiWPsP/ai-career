@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { DataAnalysis, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import { getAbilityHistory, getAbilityRadar, getAbilityTrend, getCurrentAbilities } from '../../api/ability'
 import AbilityRadar from '../../components/AbilityRadar.vue'
 import AbilityTrendChart from '../../components/AbilityTrendChart.vue'
@@ -61,9 +62,9 @@ function sourceLabel(source: string) {
     </header>
 
     <section class="ability-summary">
-      <article><span class="summary-icon">⌁</span><div><p>能力维度</p><strong>{{ Object.keys(current).length }}<small>项</small></strong></div></article>
-      <article><span class="summary-icon green">◎</span><div><p>当前平均分</p><strong>{{ averageScore }}<small>分</small></strong></div></article>
-      <article><span class="summary-icon orange">↗</span><div><p>当前优势能力</p><strong class="ability-name">{{ strongest?.[0] || '待评估' }}</strong><small v-if="strongest">{{ strongest[1] }} 分</small></div></article>
+      <article><el-icon class="summary-icon"><DataAnalysis /></el-icon><div><p>能力维度</p><strong>{{ Object.keys(current).length }}<small>项</small></strong></div></article>
+      <article><el-icon class="summary-icon green"><TrendCharts /></el-icon><div><p>当前平均分</p><strong>{{ averageScore }}<small>分</small></strong></div></article>
+      <article><el-icon class="summary-icon orange"><Trophy /></el-icon><div><p>当前优势能力</p><strong class="ability-name">{{ strongest?.[0] || '待评估' }}</strong><small v-if="strongest">{{ strongest[1] }} 分</small></div></article>
     </section>
 
     <section class="ability-grid">
@@ -101,7 +102,7 @@ function sourceLabel(source: string) {
         </el-table-column>
       </el-table>
       <div v-else class="empty-panel">
-        <div><span class="empty-icon">⌁</span><strong>暂无能力评分记录</strong><span>完成技能画像或模拟面试后，这里会持续沉淀能力变化。</span></div>
+        <div><el-icon class="empty-icon"><DataAnalysis /></el-icon><strong>暂无能力评分记录</strong><span>完成技能画像或模拟面试后，这里会持续沉淀能力变化。</span></div>
       </div>
     </section>
   </div>

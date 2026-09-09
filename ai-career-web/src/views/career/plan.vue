@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { CircleCheck, TrendCharts, Warning } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { getCurrentPlan, getPlanById, getPlanHistory } from '../../api/career'
 import RoadmapTimeline from '../../components/RoadmapTimeline.vue'
@@ -65,14 +66,14 @@ async function switchPlan(id: number) {
 
       <section class="insight-grid">
         <article class="surface-card insight-card advantage">
-          <div class="card-header"><h2>当前优势</h2><span>✓</span></div>
+          <div class="card-header"><h2>当前优势</h2><el-icon><CircleCheck /></el-icon></div>
           <ul v-if="advantages.length">
             <li v-for="item in advantages" :key="item">{{ item }}</li>
           </ul>
           <p v-else class="muted-copy">规划中暂未记录优势项。</p>
         </article>
         <article class="surface-card insight-card weakness">
-          <div class="card-header"><h2>重点短板</h2><span>!</span></div>
+          <div class="card-header"><h2>重点短板</h2><el-icon><Warning /></el-icon></div>
           <ul v-if="weaknesses.length">
             <li v-for="item in weaknesses" :key="item">{{ item }}</li>
           </ul>
@@ -108,7 +109,7 @@ async function switchPlan(id: number) {
 
     <section v-else class="surface-card empty-panel plan-empty">
       <div>
-        <span class="empty-icon">↗</span>
+        <el-icon class="empty-icon"><TrendCharts /></el-icon>
         <strong>你的第一份职业规划还未生成</strong>
         <p>先完善职业画像和技能信息。AI 规划接口完成后，可直接在这里生成结构化成长路线。</p>
         <el-button type="primary" @click="router.push('/profile')">完善职业画像</el-button>
@@ -138,15 +139,15 @@ async function switchPlan(id: number) {
 .match-score span { display: block; margin-top: -15px; color: var(--muted); font-size: 12px; }
 .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
 .insight-card { padding: 23px 26px; }
-.insight-card .card-header span {
+.insight-card .card-header .el-icon {
   display: grid;
   width: 30px;
   height: 30px;
   place-items: center;
   border-radius: 9px;
 }
-.advantage .card-header span { color: var(--success); background: var(--success-soft); }
-.weakness .card-header span { color: var(--warning); background: var(--warning-soft); }
+.advantage .card-header .el-icon { color: var(--success); background: var(--success-soft); }
+.weakness .card-header .el-icon { color: var(--warning); background: var(--warning-soft); }
 .insight-card ul { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }
 .insight-card li { position: relative; padding-left: 20px; color: #54596d; font-size: 13px; line-height: 1.6; }
 .insight-card li::before { position: absolute; left: 0; color: var(--primary); content: '•'; }

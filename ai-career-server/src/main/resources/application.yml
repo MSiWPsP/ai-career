@@ -3,6 +3,10 @@ spring:
     name: ai-career-server
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev,local}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 mybatis-plus:
   configuration:
@@ -12,3 +16,8 @@ app:
   jwt:
     secret: ${JWT_SECRET:ai-career-dev-jwt-secret-key-change-in-production-2026}
     expiration-millis: ${JWT_EXPIRATION_MILLIS:604800000}
+
+aliyun:
+  oss:
+    endpoint: https://oss-cn-shanghai.aliyuncs.com
+    bucket-name: xucheng-zzyl

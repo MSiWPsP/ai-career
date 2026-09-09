@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { CircleCheck } from '@element-plus/icons-vue'
 import { getTasks, getTaskStatistics, updateTaskStatus } from '../../api/task'
 import TaskCard from '../../components/TaskCard.vue'
 import type { CareerTask, TaskStatistics } from '../../types/api'
@@ -115,7 +116,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
           </section>
         </template>
         <div v-else class="empty-panel">
-          <div><span class="empty-icon">✓</span><strong>当前筛选下没有任务</strong><span>职业规划生成后，会自动拆解为可以执行的成长任务。</span></div>
+          <div><el-icon class="empty-icon"><CircleCheck /></el-icon><strong>当前筛选下没有任务</strong><span>职业规划生成后，会自动拆解为可以执行的成长任务。</span></div>
         </div>
       </div>
     </section>

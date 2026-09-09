@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { DataAnalysis } from '@element-plus/icons-vue'
 import { RadarChart } from 'echarts/charts'
 import { LegendComponent, RadarComponent, TooltipComponent } from 'echarts/components'
 import { init, use, type ECharts, type EChartsCoreOption } from 'echarts/core'
@@ -71,7 +72,7 @@ onBeforeUnmount(() => {
     :style="{ height: height + 'px' }"
   />
   <div v-else class="chart-empty">
-    <span class="empty-icon">⌁</span>
+    <el-icon class="empty-icon"><DataAnalysis /></el-icon>
     <strong>还没有能力数据</strong>
     <small>完成技能画像或模拟面试后，这里会形成你的能力图谱。</small>
   </div>

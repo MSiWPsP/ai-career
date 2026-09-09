@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Check } from '@element-plus/icons-vue'
 import type { CareerTask } from '../types/api'
 import { formatDate } from '../utils/data'
 
@@ -23,7 +24,7 @@ const priority = computed(() => {
       :aria-label="task.status === 2 ? '标记为进行中' : '标记为完成'"
       @click="emit('changeStatus', task, task.status === 2 ? 1 : 2)"
     >
-      <span v-if="task.status === 2">✓</span>
+      <el-icon v-if="task.status === 2"><Check /></el-icon>
     </button>
     <div class="task-main">
       <div class="task-title-row">

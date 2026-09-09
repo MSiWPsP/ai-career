@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { Microphone, Service } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getProfile } from '../../api/profile'
 import { getSkills } from '../../api/skill'
@@ -49,7 +50,7 @@ function startInterview() {
     <section class="setup-grid">
       <article class="surface-card config-card">
         <div class="config-head">
-          <span class="interviewer-avatar">AI</span>
+          <el-icon class="interviewer-avatar"><Service /></el-icon>
           <div><h2>AI 模拟面试</h2><p>本次面试过程不会实时展示评分，完成后统一生成复盘报告。</p></div>
         </div>
 
@@ -77,7 +78,7 @@ function startInterview() {
 
           <div class="start-area">
             <p>预计用时 {{ config.maxQuestions * 2 }}～{{ config.maxQuestions * 3 }} 分钟</p>
-            <el-button type="primary" size="large" @click="startInterview">🎙 开始模拟面试</el-button>
+            <el-button type="primary" size="large" :icon="Microphone" @click="startInterview">开始模拟面试</el-button>
           </div>
         </el-form>
       </article>

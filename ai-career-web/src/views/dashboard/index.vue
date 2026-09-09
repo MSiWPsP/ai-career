@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import {
+  Aim,
+  ArrowRight,
+  ChatDotRound,
+  CircleCheck,
+  MagicStick,
+  Sunny,
+  TrendCharts,
+} from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { getAbilityRadar } from '../../api/ability'
 import { getCurrentPlan } from '../../api/career'
@@ -98,34 +107,34 @@ async function changeTaskStatus(task: CareerTask, status: number) {
     <header class="dashboard-hero">
       <div>
         <p class="eyebrow">TODAY'S GROWTH</p>
-        <h1>{{ greeting }}，{{ user?.nickname || '同学' }} <span>👋</span></h1>
+        <h1>{{ greeting }}，{{ user?.nickname || '同学' }} <el-icon><Sunny /></el-icon></h1>
         <p>今天也是向目标前进一步的一天。</p>
       </div>
       <div class="goal-card">
         <span>当前职业目标</span>
         <strong>{{ profile?.targetPosition || plan?.targetPosition || '尚未设置' }}</strong>
-        <button @click="router.push('/profile')">编辑目标 →</button>
+        <button @click="router.push('/profile')">编辑目标 <el-icon><ArrowRight /></el-icon></button>
       </div>
     </header>
 
     <section class="metrics-grid">
       <article class="metric-card">
-        <span class="metric-icon purple">◎</span>
+        <el-icon class="metric-icon purple"><Aim /></el-icon>
         <div><p>职业匹配度</p><strong>{{ plan?.matchScore ?? '—' }}<small v-if="plan?.matchScore">%</small></strong></div>
         <em>目标契合情况</em>
       </article>
       <article class="metric-card">
-        <span class="metric-icon green">✓</span>
+        <el-icon class="metric-icon green"><CircleCheck /></el-icon>
         <div><p>任务完成率</p><strong>{{ statistics.completionRate }}<small>%</small></strong></div>
         <em>{{ statistics.completed }}/{{ statistics.total }} 项已完成</em>
       </article>
       <article class="metric-card">
-        <span class="metric-icon orange">◇</span>
+        <el-icon class="metric-icon orange"><ChatDotRound /></el-icon>
         <div><p>最近面试成绩</p><strong>{{ latestInterview?.totalScore ?? '—' }}<small v-if="latestInterview?.totalScore">分</small></strong></div>
         <em>{{ latestInterview ? formatDate(latestInterview.createTime) : '等待首次面试' }}</em>
       </article>
       <article class="metric-card">
-        <span class="metric-icon blue">↗</span>
+        <el-icon class="metric-icon blue"><TrendCharts /></el-icon>
         <div><p>成长任务</p><strong>{{ statistics.processing }}<small>项</small></strong></div>
         <em>正在进行中</em>
       </article>
@@ -135,7 +144,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
       <article class="surface-card radar-panel">
         <div class="card-header">
           <div><h2>我的能力画像</h2><p>基于最近的技能与能力评分</p></div>
-          <button class="text-link" @click="router.push('/ability')">查看详情 →</button>
+          <button class="text-link" @click="router.push('/ability')">查看详情 <el-icon><ArrowRight /></el-icon></button>
         </div>
         <AbilityRadar :data="radar" :height="310" />
       </article>
@@ -155,16 +164,16 @@ async function changeTaskStatus(task: CareerTask, status: number) {
           />
         </div>
         <div v-else class="empty-panel compact">
-          <div><span class="empty-icon">✓</span><strong>暂无成长任务</strong><span>生成职业规划后，任务会出现在这里。</span></div>
+          <div><el-icon class="empty-icon"><CircleCheck /></el-icon><strong>暂无成长任务</strong><span>生成职业规划后，任务会出现在这里。</span></div>
         </div>
-        <button class="panel-footer-link" @click="router.push('/tasks')">查看全部成长任务 <span>→</span></button>
+        <button class="panel-footer-link" @click="router.push('/tasks')">查看全部成长任务 <el-icon><ArrowRight /></el-icon></button>
       </article>
     </section>
 
     <article class="advice-card">
-      <span class="advice-spark">✦</span>
+      <el-icon class="advice-spark"><MagicStick /></el-icon>
       <div><p>AI 今日建议</p><strong>{{ advice }}</strong></div>
-      <button @click="router.push('/career/chat')">和 AI 规划师聊聊</button>
+      <button @click="router.push('/career/chat')">和 AI 规划师聊聊 <el-icon><ArrowRight /></el-icon></button>
     </article>
 
     <section class="section-grid two-column dashboard-bottom">
@@ -180,14 +189,14 @@ async function changeTaskStatus(task: CareerTask, status: number) {
           <el-button type="primary" plain @click="router.push('/interview/' + latestInterview.id + '/report')">查看报告</el-button>
         </div>
         <div v-else class="empty-panel compact">
-          <div><span class="empty-icon">◇</span><strong>还没有模拟面试记录</strong><span>准备好后，完成你的第一次模拟面试。</span></div>
+          <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>还没有模拟面试记录</strong><span>准备好后，完成你的第一次模拟面试。</span></div>
         </div>
       </article>
 
       <article class="surface-card roadmap-panel">
         <div class="card-header">
           <div><h2>职业成长路线</h2><p>{{ plan ? '规划 V' + plan.version : '等待生成规划' }}</p></div>
-          <button class="text-link" @click="router.push('/career/plan')">查看规划 →</button>
+          <button class="text-link" @click="router.push('/career/plan')">查看规划 <el-icon><ArrowRight /></el-icon></button>
         </div>
         <div v-if="roadmap.length" class="mini-roadmap">
           <div v-for="(stage, index) in roadmap.slice(0, 4)" :key="stage.stage || index" class="mini-stage">
@@ -196,7 +205,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
           </div>
         </div>
         <div v-else class="empty-panel compact">
-          <div><span class="empty-icon">↗</span><strong>职业路线等待生成</strong><span>完善画像后即可开启个性化规划。</span></div>
+          <div><el-icon class="empty-icon"><TrendCharts /></el-icon><strong>职业路线等待生成</strong><span>完善画像后即可开启个性化规划。</span></div>
         </div>
       </article>
     </section>
@@ -213,7 +222,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 }
 
 .dashboard-hero h1 { margin: 0; font-size: 28px; }
-.dashboard-hero h1 span { font-size: 24px; }
+.dashboard-hero h1 .el-icon { margin-left: 5px; color: #f2a93b; font-size: 24px; vertical-align: -3px; }
 .dashboard-hero > div > p:last-child { margin: 8px 0 0; color: var(--muted); }
 
 .goal-card {
@@ -239,6 +248,14 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
+}
+
+.goal-card button,
+.text-link,
+.advice-card button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .metrics-grid {
@@ -294,7 +311,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   text-align: left;
 }
 
-.panel-footer-link span { float: right; }
+.panel-footer-link .el-icon { float: right; }
 
 .advice-card {
   display: grid;

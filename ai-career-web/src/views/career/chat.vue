@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ArrowRight, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -30,7 +31,7 @@ function send() {
     <section class="chat-layout">
       <article class="surface-card chat-card">
         <div class="assistant-intro">
-          <span>✦</span>
+          <el-icon><MagicStick /></el-icon>
           <div>
             <small>AI 职业规划师</small>
             <h2>你好，我是你的职业成长搭档。</h2>
@@ -38,7 +39,7 @@ function send() {
           </div>
         </div>
         <div class="quick-list">
-          <button v-for="question in quickQuestions" :key="question" @click="message = question">{{ question }} <span>→</span></button>
+          <button v-for="question in quickQuestions" :key="question" @click="message = question">{{ question }} <el-icon><ArrowRight /></el-icon></button>
         </div>
         <div class="chat-notice">
           <span>开发中</span>
@@ -66,13 +67,13 @@ function send() {
 .chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 20px; min-height: 640px; }
 .chat-card { display: flex; flex-direction: column; padding: 30px; }
 .assistant-intro { display: flex; gap: 17px; max-width: 720px; padding: 24px; border-radius: 16px; background: linear-gradient(135deg, #f0f1ff, #fafaff); }
-.assistant-intro > span { display: grid; width: 43px; height: 43px; flex: 0 0 43px; place-items: center; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #595dd8, #8872e7); }
+.assistant-intro > .el-icon { display: grid; width: 43px; height: 43px; flex: 0 0 43px; place-items: center; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #595dd8, #8872e7); font-size: 21px; }
 .assistant-intro small { color: var(--primary); font-weight: 700; }
 .assistant-intro h2 { margin: 8px 0; font-size: 19px; }
 .assistant-intro p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .quick-list { display: flex; flex-wrap: wrap; gap: 9px; margin: 25px 0; }
-.quick-list button { padding: 9px 13px; border: 1px solid #dddff1; border-radius: 999px; color: #595e76; background: #fff; cursor: pointer; font-size: 12px; }
-.quick-list span { margin-left: 6px; color: var(--primary); }
+.quick-list button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #dddff1; border-radius: 999px; color: #595e76; background: #fff; cursor: pointer; font-size: 12px; }
+.quick-list .el-icon { color: var(--primary); }
 .chat-notice { display: grid; min-height: 220px; place-content: center; color: var(--muted); text-align: center; }
 .chat-notice span { width: fit-content; margin: 0 auto 10px; padding: 6px 11px; border-radius: 999px; color: var(--warning); background: var(--warning-soft); font-size: 11px; font-weight: 700; }
 .chat-notice p { max-width: 450px; margin: 0; font-size: 13px; line-height: 1.7; }
