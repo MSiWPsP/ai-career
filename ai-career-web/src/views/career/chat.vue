@@ -125,7 +125,7 @@ function retry() {
               <el-icon><User v-if="item.role === 'user'" /><Service v-else /></el-icon>
             </span>
             <div class="message-bubble">
-              <small>{{ item.role === 'user' ? '你' : 'AI 职业规划师' }}</small>
+              <small v-if="item.role === 'assistant'">AI 职业规划师</small>
               <p :class="{ 'streaming-content': sending && item.id === messages[messages.length - 1]?.id && item.role === 'assistant' }">
                 {{ formatChatContent(item.content) }}
               </p>
@@ -233,7 +233,7 @@ function retry() {
 .chat-message.user { margin-left: auto; flex-direction: row-reverse; }
 .chat-message.user .message-avatar { background: #2e9c77; }
 .chat-message.user .message-bubble { border-radius: 15px 4px 15px 15px; background: #eff9f5; }
-.chat-message.user .message-bubble small { color: #268366; }
+.chat-message.user .message-bubble p { margin-top: 0; }
 .typing-dots { display: flex; gap: 5px; min-width: 50px; padding: 10px 2px 3px; }
 .typing-dots i { width: 7px; height: 7px; border-radius: 50%; background: #9699af; animation: pulse 1.2s infinite ease-in-out; }
 .typing-dots i:nth-child(2) { animation-delay: 0.15s; }
