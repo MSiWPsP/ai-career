@@ -117,10 +117,12 @@ function retry() {
 <template>
   <div class="chat-page">
     <header class="page-heading">
-      <div>
-        <p class="eyebrow">AI CAREER PLANNER</p>
-        <h1>AI 职业规划师</h1>
-        <p>已支持流式回复和近期连续对话；当前标签页内切换页面仍会保留聊天记录。</p>
+      <div class="heading-copy">
+        <div class="heading-title">
+          <p class="eyebrow">AI CAREER PLANNER</p>
+          <h1>AI 职业规划师</h1>
+        </div>
+        <p class="heading-description">支持流式回复与近期连续对话，当前标签页内切换页面仍会保留记录。</p>
       </div>
       <el-button type="primary" disabled>生成完整职业规划 · 待接入</el-button>
     </header>
@@ -198,10 +200,18 @@ function retry() {
 </template>
 
 <style scoped>
-.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 20px; min-height: 640px; }
-.chat-card { display: flex; min-height: 640px; flex-direction: column; overflow: hidden; }
-.message-area { flex: 1; max-height: 500px; overflow-y: auto; padding: 28px 30px 8px; background: #fafafe; scroll-behavior: smooth; }
-.chat-message { display: flex; gap: 12px; max-width: 82%; margin-bottom: 22px; }
+.chat-page { display: flex; min-height: calc(100vh - 142px); flex-direction: column; }
+.chat-page .page-heading { align-items: center; margin-bottom: 14px; }
+.heading-copy { min-width: 0; }
+.heading-title { display: flex; align-items: baseline; gap: 12px; }
+.heading-title .eyebrow { margin: 0; font-size: 10px; letter-spacing: 1.5px; }
+.heading-title h1 { font-size: 23px; }
+.heading-description { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.chat-page .page-heading > .el-button { flex: 0 0 auto; }
+.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; flex: 1; gap: 16px; min-height: clamp(680px, calc(100vh - 205px), 920px); }
+.chat-card { display: flex; min-height: 0; flex-direction: column; overflow: hidden; }
+.message-area { min-height: 0; flex: 1; overflow-y: auto; padding: 22px 24px 8px; background: #fafafe; scroll-behavior: smooth; }
+.chat-message { display: flex; gap: 12px; max-width: 88%; margin-bottom: 18px; }
 .message-avatar { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #595dd8, #8872e7); }
 .message-bubble { padding: 14px 17px; border: 1px solid var(--line); border-radius: 4px 15px 15px; background: #fff; box-shadow: 0 5px 16px rgba(55, 57, 104, 0.04); }
 .message-bubble small { color: var(--primary); font-weight: 700; }
@@ -218,31 +228,33 @@ function retry() {
 .chat-error { max-width: 620px; margin: 0 auto 20px; }
 .chat-error :deep(.el-alert__content) { width: 100%; }
 .chat-error .el-button { margin-top: 9px; }
-.quick-list { display: flex; flex-wrap: wrap; gap: 9px; padding: 16px 24px 0; border-top: 1px solid var(--line); }
+.quick-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px 0; border-top: 1px solid var(--line); }
 .quick-list button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #dddff1; border-radius: 999px; color: #595e76; background: #fff; cursor: pointer; font-size: 12px; }
 .quick-list button:hover { border-color: #a8aae9; color: var(--primary); background: #f8f8ff; }
 .quick-list button:disabled { cursor: not-allowed; opacity: 0.55; }
 .quick-list .el-icon { color: var(--primary); }
-.chat-input { margin: 16px 24px 24px; padding: 15px; border: 1px solid #dfe1ed; border-radius: 14px; }
+.chat-input { margin: 12px 20px 20px; padding: 13px 14px; border: 1px solid #dfe1ed; border-radius: 14px; }
 .chat-input:focus-within { border-color: #a6a8e8; box-shadow: 0 0 0 3px rgba(89, 93, 216, 0.08); }
 .chat-input :deep(.el-textarea__inner) { padding: 0; border: 0; box-shadow: none; }
 .chat-input > div { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
 .chat-input small { color: var(--muted); }
-.portrait-card { align-self: start; min-height: 330px; padding: 24px; }
-.portrait-heading { display: flex; align-items: center; gap: 11px; }
-.portrait-heading > .el-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; color: var(--primary); background: var(--primary-soft); font-size: 18px; }
+.portrait-card { align-self: start; min-height: 0; padding: 18px; }
+.portrait-heading { display: flex; align-items: center; gap: 9px; }
+.portrait-heading > .el-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: var(--primary); background: var(--primary-soft); font-size: 16px; }
 .portrait-heading .eyebrow { margin-bottom: 3px; }
-.portrait-heading h2 { margin: 0; font-size: 18px; }
-.context-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.portrait-heading h2 { margin: 0; font-size: 16px; }
+.context-item { padding: 11px 0; border-bottom: 1px solid var(--line); }
 .context-item span,
 .context-item strong { display: block; }
 .context-item span { color: var(--muted); font-size: 11px; }
 .context-item strong { margin-top: 6px; font-size: 13px; }
-.context-empty { display: grid; min-height: 125px; place-items: center; color: var(--muted); font-size: 13px; text-align: center; }
-.context-tip { margin: 16px 0 0; padding: 10px 11px; border-radius: 9px; color: #777b91; background: #f7f7fb; font-size: 11px; line-height: 1.6; }
-.profile-button { width: 100%; margin-top: 16px; }
+.context-empty { display: grid; min-height: 90px; place-items: center; color: var(--muted); font-size: 12px; text-align: center; }
+.context-tip { margin: 12px 0 0; padding: 9px 10px; border-radius: 9px; color: #777b91; background: #f7f7fb; font-size: 10px; line-height: 1.55; }
+.profile-button { width: 100%; margin-top: 12px; }
 @keyframes pulse { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 @keyframes cursor-blink { 50% { opacity: 0; } }
-@media (max-width: 960px) { .chat-layout { grid-template-columns: 1fr; } .message-area { max-height: none; } }
+@media (max-width: 1100px) { .chat-layout { grid-template-columns: minmax(0, 1fr) 230px; } }
+@media (max-width: 960px) { .chat-page { min-height: auto; } .chat-layout { grid-template-columns: 1fr; min-height: 680px; } .portrait-card { width: 100%; } }
+@media (max-width: 640px) { .chat-page .page-heading { align-items: flex-start; } .heading-title { flex-wrap: wrap; gap: 4px 10px; } }
 @media (max-width: 600px) { .message-area { padding: 22px 16px 6px; } .chat-message { max-width: 94%; } .chat-input { margin-inline: 16px; } .quick-list { padding-inline: 16px; } }
 </style>
