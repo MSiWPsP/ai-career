@@ -5,7 +5,12 @@ import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerPlanService;
 import com.xucheng.aicareer.vo.CareerChatVO;
+import com.xucheng.aicareer.vo.CareerChatStreamVO;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.codec.ServerSentEvent;
+import reactor.core.publisher.Flux;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -33,5 +38,23 @@ class CareerControllerTests {
         assertThat(result.getMessage()).isEqualTo("success");
         assertThat(result.getData()).isSameAs(chatResponse);
         verify(careerChatService).chat(request);
+    }
+
+    @Test
+    void chatStreamReturnsNamedServerSentEvents() {
+        CareerPlanService careerPlanService = mock(CareerPlanService.class);
+        CareerChatService careerChatService = mock(CareerChatService.class);
+        CareerController controller = new CareerController(careerPlanService, careerChatService);
+        CareerChatDTO request = new CareerChatDTO();
+        request.setMessage("Redis应该怎么学？");
+        CareerChatStreamVO delta = CareerChatStreamVO.delta("career:10001", "先掌握数据结构。");
+        CareerChatStreamVO done = CareerChatStreamVO.done("career:10001");
+        when(careerChatService.chatStream(request)).thenReturn(Flux.just(delta, done));
+
+        List<ServerSentEvent<CareerChatStreamVO>> events = controller.chatStream(request).collectList().block();
+
+        assertThat(events).extracting(ServerSentEvent::event).containsExactly("delta", "done");
+        assertThat(events).extracting(ServerSentEvent::data).containsExactly(delta, done);
+        verify(careerChatService).chatStream(request);
     }
 }

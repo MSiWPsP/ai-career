@@ -13,6 +13,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.test.util.ReflectionTestUtils;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -77,6 +78,50 @@ class CareerPlannerAgentTests {
                 .containsExactly("我刚才说想学什么？");
     }
 
+    @Test
+    void chatStreamEmitsDeltasAndCarriesConversationContext() {
+        RecordingStreamingChatModel chatModel = new RecordingStreamingChatModel(
+                List.of("第一段", "第二段"), List.of("追问回答"));
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(new InMemoryChatMemoryRepository())
+                .maxMessages(20)
+                .build();
+        ChatClient chatClient = ChatClient.builder(chatModel)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
+        CareerPlannerAgent agent = createAgent(chatClient);
+
+        List<String> firstAnswer = agent.chatStream(10001L, "career:10001", "第一个问题")
+                .collectList().block();
+        List<String> secondAnswer = agent.chatStream(10001L, "career:10001", "继续追问")
+                .collectList().block();
+
+        assertThat(firstAnswer).containsExactly("第一段", "第二段");
+        assertThat(secondAnswer).containsExactly("追问回答");
+        assertThat(messageTexts(chatModel.prompts.get(1)))
+                .containsExactly("第一个问题", "第一段第二段", "继续追问");
+    }
+
+    @Test
+    void chatStreamConvertsProviderFailureToAiServiceException() {
+        ChatModel chatModel = new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.error(new IllegalStateException("provider failed"));
+            }
+        };
+        CareerPlannerAgent agent = createAgent(chatClient(chatModel));
+
+        assertThatThrownBy(() -> agent.chatStream(10001L, "career:10001", "测试问题").blockLast())
+                .isInstanceOf(AiServiceException.class)
+                .hasMessage("调用职业规划模型失败");
+    }
+
     private ChatClient chatClient(ChatModel chatModel) {
         return ChatClient.builder(chatModel).build();
     }
@@ -108,6 +153,30 @@ class CareerPlannerAgentTests {
         public ChatResponse call(Prompt prompt) {
             prompts.add(prompt);
             return new ChatResponse(List.of(new Generation(new AssistantMessage(responses.removeFirst()))));
+        }
+    }
+
+    private static final class RecordingStreamingChatModel implements ChatModel {
+
+        private final Deque<List<String>> responses;
+        private final List<Prompt> prompts = new ArrayList<>();
+
+        @SafeVarargs
+        private RecordingStreamingChatModel(List<String>... responses) {
+            this.responses = new ArrayDeque<>(List.of(responses));
+        }
+
+        @Override
+        public ChatResponse call(Prompt prompt) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Flux<ChatResponse> stream(Prompt prompt) {
+            prompts.add(prompt);
+            return Flux.fromIterable(responses.removeFirst())
+                    .map(content -> new ChatResponse(List.of(
+                            new Generation(new AssistantMessage(content)))));
         }
     }
 }

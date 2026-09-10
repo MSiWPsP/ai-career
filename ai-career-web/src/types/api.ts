@@ -96,6 +96,14 @@ export interface CareerChatResponse {
   content: string
 }
 
+export type CareerChatStreamEventType = 'delta' | 'done' | 'error'
+
+export interface CareerChatStreamEvent {
+  type: CareerChatStreamEventType
+  conversationId: string
+  content?: string
+}
+
 export interface CareerTask {
   id: number
   careerPlanId: number

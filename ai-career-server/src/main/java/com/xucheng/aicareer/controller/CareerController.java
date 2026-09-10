@@ -5,6 +5,7 @@ import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerPlanService;
 import com.xucheng.aicareer.vo.CareerChatVO;
+import com.xucheng.aicareer.vo.CareerChatStreamVO;
 import com.xucheng.aicareer.vo.CareerPlanVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -17,6 +18,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -31,9 +35,19 @@ public class CareerController {
     private final CareerChatService careerChatService;
 
     @PostMapping("/chat")
-    @Operation(summary = "与AI职业规划师普通聊天", description = "当前版本为单轮非流式聊天，暂不包含ChatMemory、Tool Calling或RAG")
+    @Operation(summary = "与AI职业规划师普通聊天", description = "非流式兼容接口，已包含近期ChatMemory，暂不包含Tool Calling或RAG")
     public Result<CareerChatVO> chat(@Valid @RequestBody CareerChatDTO chatDTO) {
         return Result.success(careerChatService.chat(chatDTO));
+    }
+
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "与AI职业规划师流式聊天", description = "通过SSE依次返回delta、done或error事件，并按当前用户保持近期对话记忆")
+    public Flux<ServerSentEvent<CareerChatStreamVO>> chatStream(@Valid @RequestBody CareerChatDTO chatDTO) {
+        return careerChatService.chatStream(chatDTO)
+                .map(item -> ServerSentEvent.<CareerChatStreamVO>builder()
+                        .event(item.getType())
+                        .data(item)
+                        .build());
     }
 
     @GetMapping("/plan/current")

@@ -7,6 +7,9 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
+  mvc:
+    async:
+      request-timeout: ${AI_STREAM_TIMEOUT:120s}
   ai:
     model:
       chat: openai

@@ -1,36 +1,22 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { ArrowRight, MagicStick, RefreshRight, Service, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { chatWithCareerPlanner, getCurrentPlan } from '../../api/career'
+import { getCurrentPlan, streamCareerPlannerChat } from '../../api/career'
 import { getProfile } from '../../api/profile'
+import { useCareerChatStore } from '../../stores/careerChat'
 import type { CareerPlan, UserProfile } from '../../types/api'
 
-interface ChatMessage {
-  id: number
-  role: 'assistant' | 'user'
-  content: string
-}
-
 const router = useRouter()
+const careerChatStore = useCareerChatStore()
+const { messages, conversationId, sending, failedMessage } = storeToRefs(careerChatStore)
 const messageArea = ref<HTMLElement>()
 const message = ref('')
-const sending = ref(false)
 const contextLoading = ref(true)
-const conversationId = ref('')
-const failedMessage = ref('')
 const profile = ref<UserProfile>()
 const currentPlan = ref<CareerPlan>()
-let messageSequence = 1
-
-const messages = ref<ChatMessage[]>([
-  {
-    id: messageSequence++,
-    role: 'assistant',
-    content: '你好，我是你的 AI 职业规划师。你可以和我讨论职业方向、学习路线、实习准备或求职选择。我会记住近期对话上下文；职业画像等业务数据暂未自动读取，请先在问题中补充关键背景。',
-  },
-])
 
 const quickQuestions = [
   '我适合做 Java 后端吗？',
@@ -53,6 +39,7 @@ onMounted(async () => {
   if (profileResult.status === 'fulfilled') profile.value = profileResult.value
   if (planResult.status === 'fulfilled') currentPlan.value = planResult.value
   contextLoading.value = false
+  await scrollToBottom()
 })
 
 async function scrollToBottom() {
@@ -60,7 +47,7 @@ async function scrollToBottom() {
   if (messageArea.value) messageArea.value.scrollTop = messageArea.value.scrollHeight
 }
 
-async function send(content = message.value) {
+async function send(content = message.value, recordUserMessage = true) {
   const question = content.trim()
   if (!question) {
     ElMessage.warning('请输入你的职业问题')
@@ -72,20 +59,37 @@ async function send(content = message.value) {
   }
   if (sending.value) return
 
-  failedMessage.value = ''
-  messages.value.push({ id: messageSequence++, role: 'user', content: question })
+  careerChatStore.startSending()
+  if (recordUserMessage) careerChatStore.addUserMessage(question)
   message.value = ''
-  sending.value = true
   await scrollToBottom()
 
+  let assistantMessageId: number | undefined
   try {
-    const response = await chatWithCareerPlanner({ message: question })
-    conversationId.value = response.conversationId
-    messages.value.push({ id: messageSequence++, role: 'assistant', content: response.content })
+    await streamCareerPlannerChat(
+      { message: question },
+      {
+        onDelta(event) {
+          careerChatStore.setConversationId(event.conversationId)
+          if (assistantMessageId === undefined) {
+            assistantMessageId = careerChatStore.addAssistantMessage(event.content || '')
+          } else {
+            careerChatStore.appendAssistantMessage(assistantMessageId, event.content || '')
+          }
+          void scrollToBottom()
+        },
+        onDone(event) {
+          careerChatStore.finishSending(event.conversationId)
+        },
+        onError(event) {
+          careerChatStore.setConversationId(event.conversationId)
+        },
+      },
+    )
   } catch {
-    failedMessage.value = question
+    if (assistantMessageId !== undefined) careerChatStore.removeMessage(assistantMessageId)
+    careerChatStore.failSending(question)
   } finally {
-    sending.value = false
     await scrollToBottom()
   }
 }
@@ -105,8 +109,8 @@ function formatChatContent(content: string) {
 function retry() {
   if (!failedMessage.value) return
   const question = failedMessage.value
-  failedMessage.value = ''
-  void send(question)
+  careerChatStore.clearFailure()
+  void send(question, false)
 }
 </script>
 
@@ -116,7 +120,7 @@ function retry() {
       <div>
         <p class="eyebrow">AI CAREER PLANNER</p>
         <h1>AI 职业规划师</h1>
-        <p>讨论职业方向、能力差距和下一步行动；已支持同一账号的近期连续对话。</p>
+        <p>已支持流式回复和近期连续对话；当前标签页内切换页面仍会保留聊天记录。</p>
       </div>
       <el-button type="primary" disabled>生成完整职业规划 · 待接入</el-button>
     </header>
@@ -130,11 +134,13 @@ function retry() {
             </span>
             <div class="message-bubble">
               <small>{{ item.role === 'user' ? '你' : 'AI 职业规划师' }}</small>
-              <p>{{ formatChatContent(item.content) }}</p>
+              <p :class="{ 'streaming-content': sending && item.id === messages[messages.length - 1]?.id && item.role === 'assistant' }">
+                {{ formatChatContent(item.content) }}
+              </p>
             </div>
           </article>
 
-          <article v-if="sending" class="chat-message assistant pending-message">
+          <article v-if="sending && messages[messages.length - 1]?.role !== 'assistant'" class="chat-message assistant pending-message">
             <span class="message-avatar"><el-icon><Service /></el-icon></span>
             <div class="message-bubble">
               <small>AI 职业规划师</small>
@@ -200,6 +206,7 @@ function retry() {
 .message-bubble { padding: 14px 17px; border: 1px solid var(--line); border-radius: 4px 15px 15px; background: #fff; box-shadow: 0 5px 16px rgba(55, 57, 104, 0.04); }
 .message-bubble small { color: var(--primary); font-weight: 700; }
 .message-bubble p { margin: 7px 0 0; color: #44495e; line-height: 1.75; white-space: pre-wrap; }
+.streaming-content::after { display: inline-block; width: 2px; height: 1em; margin-left: 3px; background: var(--primary); content: ''; vertical-align: -2px; animation: cursor-blink 0.8s steps(1) infinite; }
 .chat-message.user { margin-left: auto; flex-direction: row-reverse; }
 .chat-message.user .message-avatar { background: #2e9c77; }
 .chat-message.user .message-bubble { border-radius: 15px 4px 15px 15px; background: #eff9f5; }
@@ -235,6 +242,7 @@ function retry() {
 .context-tip { margin: 16px 0 0; padding: 10px 11px; border-radius: 9px; color: #777b91; background: #f7f7fb; font-size: 11px; line-height: 1.6; }
 .profile-button { width: 100%; margin-top: 16px; }
 @keyframes pulse { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+@keyframes cursor-blink { 50% { opacity: 0; } }
 @media (max-width: 960px) { .chat-layout { grid-template-columns: 1fr; } .message-area { max-height: none; } }
 @media (max-width: 600px) { .message-area { padding: 22px 16px 6px; } .chat-message { max-width: 94%; } .chat-input { margin-inline: 16px; } .quick-list { padding-inline: 16px; } }
 </style>
