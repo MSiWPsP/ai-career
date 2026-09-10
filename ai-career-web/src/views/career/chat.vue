@@ -208,8 +208,8 @@ function retry() {
 .heading-title h1 { font-size: 23px; }
 .heading-description { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .chat-page .page-heading > .el-button { flex: 0 0 auto; }
-.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; flex: 1; gap: 16px; min-height: clamp(680px, calc(100vh - 205px), 920px); }
-.chat-card { display: flex; min-height: 0; flex-direction: column; overflow: hidden; }
+.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; height: clamp(560px, calc(100vh - 190px), 860px); height: clamp(560px, calc(100dvh - 190px), 860px); flex: 0 0 auto; gap: 16px; min-height: 0; }
+.chat-card { display: flex; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; }
 .message-area { min-height: 0; flex: 1; overflow-y: auto; padding: 22px 24px 8px; background: #fafafe; scroll-behavior: smooth; }
 .chat-message { display: flex; gap: 12px; max-width: 88%; margin-bottom: 18px; }
 .message-avatar { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #595dd8, #8872e7); }
@@ -254,7 +254,7 @@ function retry() {
 @keyframes pulse { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 @keyframes cursor-blink { 50% { opacity: 0; } }
 @media (max-width: 1100px) { .chat-layout { grid-template-columns: minmax(0, 1fr) 230px; } }
-@media (max-width: 960px) { .chat-page { min-height: auto; } .chat-layout { grid-template-columns: 1fr; min-height: 680px; } .portrait-card { width: 100%; } }
+@media (max-width: 960px) { .chat-page { min-height: auto; } .chat-layout { grid-template-columns: 1fr; height: auto; } .chat-card { height: clamp(520px, calc(100dvh - 180px), 720px); } .portrait-card { width: 100%; } }
 @media (max-width: 640px) { .chat-page .page-heading { align-items: flex-start; } .heading-title { flex-wrap: wrap; gap: 4px 10px; } }
 @media (max-width: 600px) { .message-area { padding: 22px 16px 6px; } .chat-message { max-width: 94%; } .chat-input { margin-inline: 16px; } .quick-list { padding-inline: 16px; } }
 </style>
