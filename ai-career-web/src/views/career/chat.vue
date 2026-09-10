@@ -28,7 +28,7 @@ const messages = ref<ChatMessage[]>([
   {
     id: messageSequence++,
     role: 'assistant',
-    content: '你好，我是你的 AI 职业规划师。你可以和我讨论职业方向、学习路线、实习准备或求职选择。当前是单轮咨询模式，请在问题中带上关键背景，我会给出更有针对性的建议。',
+    content: '你好，我是你的 AI 职业规划师。你可以和我讨论职业方向、学习路线、实习准备或求职选择。我会记住近期对话上下文；职业画像等业务数据暂未自动读取，请先在问题中补充关键背景。',
   },
 ])
 
@@ -116,7 +116,7 @@ function retry() {
       <div>
         <p class="eyebrow">AI CAREER PLANNER</p>
         <h1>AI 职业规划师</h1>
-        <p>讨论职业方向、能力差距和下一步行动；ChatMemory 与业务数据读取将在后续阶段接入。</p>
+        <p>讨论职业方向、能力差距和下一步行动；已支持同一账号的近期连续对话。</p>
       </div>
       <el-button type="primary" disabled>生成完整职业规划 · 待接入</el-button>
     </header>
@@ -165,7 +165,7 @@ function retry() {
             @keydown.ctrl.enter.prevent="send()"
           />
           <div>
-            <small>{{ conversationId ? `会话标识：${conversationId}` : 'Ctrl + Enter 发送' }}</small>
+            <small>{{ conversationId ? `连续对话已启用 · ${conversationId}` : 'Ctrl + Enter 发送' }}</small>
             <el-button type="primary" :loading="sending" :disabled="!message.trim()" @click="send()">发送</el-button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import com.xucheng.aicareer.exception.AiServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -23,6 +24,7 @@ public class CareerPlannerAgent {
         try {
             String content = careerPlannerChatClient.prompt()
                     .user(message)
+                    .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()
                     .content();
             if (!StringUtils.hasText(content)) {
