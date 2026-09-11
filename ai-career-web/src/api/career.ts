@@ -1,7 +1,10 @@
 import type {
   ApiResult,
   CareerChatPayload,
+  CareerChatHistoryMessage,
   CareerChatResponse,
+  CareerChatSession,
+  CareerChatSessionUpdatePayload,
   CareerChatStreamEvent,
   CareerPlan,
 } from '../types/api'
@@ -23,10 +26,28 @@ export const generateCareerPlan = () =>
   request.post<CareerPlan>('/career/plan/generate', {}, { timeout: 150000 })
 export const chatWithCareerPlanner = (data: CareerChatPayload) =>
   request.post<CareerChatResponse>('/career/chat', data, { timeout: 90000 })
+export const createCareerConversation = () =>
+  request.post<CareerChatSession>('/career/conversations')
+export const getCareerConversations = (includeArchived = false, config?: RequestConfig) =>
+  request.get<CareerChatSession[]>(`/career/conversations?includeArchived=${includeArchived}`, config)
+export const getCareerConversationMessages = (conversationId: string, config?: RequestConfig) =>
+  request.get<CareerChatHistoryMessage[]>(
+    `/career/conversations/${encodeURIComponent(conversationId)}/messages`,
+    config,
+  )
+export const updateCareerConversation = (
+  conversationId: string,
+  data: CareerChatSessionUpdatePayload,
+) => request.put<CareerChatSession>(`/career/conversations/${encodeURIComponent(conversationId)}`, data)
+export const clearCareerConversation = (conversationId: string) =>
+  request.delete<void>(`/career/conversations/${encodeURIComponent(conversationId)}/messages`)
+export const deleteCareerConversation = (conversationId: string) =>
+  request.delete<void>(`/career/conversations/${encodeURIComponent(conversationId)}`)
 
 export async function streamCareerPlannerChat(
   data: CareerChatPayload,
   handlers: CareerChatStreamHandlers,
+  options?: { signal?: AbortSignal },
 ): Promise<void> {
   const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
   const token = tokenStorage.get()
@@ -38,6 +59,7 @@ export async function streamCareerPlannerChat(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(data),
+    signal: options?.signal,
   })
 
   const contentType = response.headers.get('content-type') || ''

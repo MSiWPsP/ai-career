@@ -1,20 +1,14 @@
 package com.xucheng.aicareer.service;
 
-import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
+import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
+import com.xucheng.aicareer.service.model.CareerChatTurnContext;
 import com.xucheng.aicareer.vo.CareerChatMessageVO;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
-import com.xucheng.aicareer.vo.CareerChatVO;
-import com.xucheng.aicareer.vo.CareerChatStreamVO;
-import reactor.core.publisher.Flux;
 
 import java.util.List;
 
-public interface CareerChatService {
-
-    CareerChatVO chat(CareerChatDTO chatDTO);
-
-    Flux<CareerChatStreamVO> chatStream(CareerChatDTO chatDTO);
+public interface CareerConversationService {
 
     CareerChatSessionVO createConversation();
 
@@ -24,7 +18,15 @@ public interface CareerChatService {
 
     CareerChatSessionVO updateConversation(String conversationId, CareerChatSessionUpdateDTO updateDTO);
 
+    void deleteConversation(String conversationId);
+
     void clearConversation(String conversationId);
 
-    void deleteConversation(String conversationId);
+    CareerChatTurnContext prepareTurn(String conversationId, String clientMessageId, String content);
+
+    void completeTurn(CareerChatTurnContext turn, String assistantContent);
+
+    void failTurn(CareerChatTurnContext turn);
+
+    List<CareerChatMemoryEntry> getRecentMemory(Long userId, String conversationId, int limit);
 }

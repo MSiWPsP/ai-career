@@ -88,11 +88,14 @@ export interface CareerPlan {
 }
 
 export interface CareerChatPayload {
+  conversationId?: string
+  clientMessageId?: string
   message: string
 }
 
 export interface CareerChatResponse {
   conversationId: string
+  clientMessageId: string
   content: string
 }
 
@@ -101,7 +104,34 @@ export type CareerChatStreamEventType = 'delta' | 'done' | 'error'
 export interface CareerChatStreamEvent {
   type: CareerChatStreamEventType
   conversationId: string
+  clientMessageId: string
   content?: string
+}
+
+export interface CareerChatSession {
+  conversationId: string
+  title: string
+  status: number
+  messageCount: number
+  lastMessage?: string
+  lastMessageAt?: string
+  createTime?: string
+  updateTime?: string
+}
+
+export interface CareerChatHistoryMessage {
+  id: number
+  clientMessageId: string
+  role: 'assistant' | 'user'
+  content: string
+  status: number
+  messageOrder: number
+  createTime?: string
+}
+
+export interface CareerChatSessionUpdatePayload {
+  title?: string
+  status?: number
 }
 
 export interface CareerTask {

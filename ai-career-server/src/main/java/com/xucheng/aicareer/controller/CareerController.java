@@ -2,9 +2,12 @@ package com.xucheng.aicareer.controller;
 
 import com.xucheng.aicareer.common.Result;
 import com.xucheng.aicareer.dto.CareerChatDTO;
+import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
 import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerPlanService;
 import com.xucheng.aicareer.vo.CareerChatVO;
+import com.xucheng.aicareer.vo.CareerChatMessageVO;
+import com.xucheng.aicareer.vo.CareerChatSessionVO;
 import com.xucheng.aicareer.vo.CareerChatStreamVO;
 import com.xucheng.aicareer.vo.CareerPlanVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,11 +16,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
@@ -48,6 +54,47 @@ public class CareerController {
                         .event(item.getType())
                         .data(item)
                         .build());
+    }
+
+    @PostMapping("/conversations")
+    @Operation(summary = "新建职业规划聊天会话")
+    public Result<CareerChatSessionVO> createConversation() {
+        return Result.success("会话创建成功", careerChatService.createConversation());
+    }
+
+    @GetMapping("/conversations")
+    @Operation(summary = "获取职业规划聊天会话列表")
+    public Result<List<CareerChatSessionVO>> getConversations(
+            @RequestParam(defaultValue = "false") boolean includeArchived) {
+        return Result.success(careerChatService.getConversations(includeArchived));
+    }
+
+    @GetMapping("/conversations/{conversationId}/messages")
+    @Operation(summary = "获取职业规划聊天历史消息")
+    public Result<List<CareerChatMessageVO>> getConversationMessages(@PathVariable String conversationId) {
+        return Result.success(careerChatService.getMessages(conversationId));
+    }
+
+    @PutMapping("/conversations/{conversationId}")
+    @Operation(summary = "重命名、归档或恢复职业规划聊天会话")
+    public Result<CareerChatSessionVO> updateConversation(
+            @PathVariable String conversationId,
+            @Valid @RequestBody CareerChatSessionUpdateDTO updateDTO) {
+        return Result.success("会话更新成功", careerChatService.updateConversation(conversationId, updateDTO));
+    }
+
+    @DeleteMapping("/conversations/{conversationId}/messages")
+    @Operation(summary = "清空职业规划聊天会话内容")
+    public Result<Void> clearConversation(@PathVariable String conversationId) {
+        careerChatService.clearConversation(conversationId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/conversations/{conversationId}")
+    @Operation(summary = "删除职业规划聊天会话")
+    public Result<Void> deleteConversation(@PathVariable String conversationId) {
+        careerChatService.deleteConversation(conversationId);
+        return Result.success();
     }
 
     @PostMapping("/plan/generate")

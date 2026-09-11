@@ -79,19 +79,25 @@ utf8mb4_unicode_ci
 
 9. ability_score
    用户能力评分表
+
+10. career_chat_session
+    职业规划聊天会话表
+
+11. career_chat_message
+    职业规划聊天消息表
 ```
 
 可选扩展表：
 
 ```text id="kbds06"
-10. knowledge_document
+12. knowledge_document
     知识库文档表
 
-11. career_position
+13. career_position
     职业岗位信息表
 ```
 
-MVP 阶段前 9 张表已经足够。
+基础 MVP 使用前 9 张表；启用职业规划聊天多会话持久化时增加第 10、11 张表。
 
 ---
 
@@ -114,7 +120,11 @@ User
  │      │
  │      └── InterviewReport
  │
- └── AbilityScore
+ ├── AbilityScore
+ │
+ └── CareerChatSession
+        │
+        └── CareerChatMessage
 ```
 
 关系说明：
@@ -151,6 +161,14 @@ User
 一个用户
     ↓
 多条能力评分记录
+
+一个用户
+    ↓
+多个职业规划聊天会话
+
+一个职业规划聊天会话
+    ↓
+多条职业规划聊天消息
 ```
 
 ---
@@ -1753,3 +1771,25 @@ career_plan新版本
 **职业画像 → AI规划 → 行动任务 → AI面试 → 能力评估 → 动态重新规划**
 
 的完整职业成长闭环。
+
+---
+
+# 五十三、职业规划聊天持久化扩展
+
+## 53.1 career_chat_session
+
+保存会话标题、状态、消息数量、最近消息摘要和最近活跃时间。`conversation_id` 使用 `career:{userId}:{uuid}`，并建立唯一索引；查询和更新时仍必须同时校验 `user_id`。
+
+## 53.2 career_chat_message
+
+保存用户和 AI 的完整消息记录。`client_message_id` 是客户端生成的幂等标识，使用 `(session_id, client_message_id, role)` 唯一索引防止重试产生重复消息。
+
+消息状态：
+
+```text
+0 = 处理中
+1 = 已完成
+2 = 失败，可使用相同 client_message_id 重试
+```
+
+ChatMemory 只加载最近窗口；完整聊天历史以 `career_chat_message` 为事实来源。后端重启时，业务 Service 从已完成消息重新构建近期 ChatMemory。

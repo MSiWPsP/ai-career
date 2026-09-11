@@ -483,9 +483,13 @@ POST /api/career/chat
 
 ```json
 {
+  "conversationId": "career:10001:2c08d11b-88b9-4d63-8cc3-0a79d86e4695",
+  "clientMessageId": "f4582584-602f-47b9-9567-6549bda65908",
   "message": "我现在应该先学Redis还是微服务？"
 }
 ```
+
+首次对话可不传 `conversationId`，后续对话应回传服务端返回的会话标识。`clientMessageId` 由前端生成，同一条消息重试时保持不变，用于避免重复保存和重复回答。
 
 不需要前端传 userId。
 
@@ -506,7 +510,8 @@ JWT
   "code": 200,
   "message": "success",
   "data": {
-    "conversationId": "career:10001",
+    "conversationId": "career:10001:2c08d11b-88b9-4d63-8cc3-0a79d86e4695",
+    "clientMessageId": "f4582584-602f-47b9-9567-6549bda65908",
     "content": "结合你目前的技能情况，建议先学习Redis……"
   }
 }
@@ -2480,3 +2485,20 @@ MySQL        Spring AI
 ```
 
 最终通过 API 将传统业务系统与 AI Agent 能力连接起来，形成完整的 AI 职业成长平台。
+
+---
+
+# 八十四、职业规划聊天会话管理扩展
+
+在保留 `POST /api/career/chat` 和 `POST /api/career/chat/stream` 的基础上，增加：
+
+```text
+POST   /api/career/conversations
+GET    /api/career/conversations?includeArchived=false
+GET    /api/career/conversations/{conversationId}/messages
+PUT    /api/career/conversations/{conversationId}
+DELETE /api/career/conversations/{conversationId}/messages
+DELETE /api/career/conversations/{conversationId}
+```
+
+其中 `PUT` 支持修改标题以及归档、恢复状态。所有接口均从 JWT 获取当前用户，并使用 `userId + conversationId` 联合校验归属。

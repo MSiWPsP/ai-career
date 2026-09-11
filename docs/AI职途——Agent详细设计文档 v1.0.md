@@ -692,7 +692,7 @@ Tool 主要负责：
 
 职业规划聊天属于长期持续对话。
 
-Conversation ID 推荐：
+首版单会话 Conversation ID 推荐：
 
 ```text
 career:{userId}
@@ -703,6 +703,14 @@ career:{userId}
 ```text
 career:10001
 ```
+
+多会话持久化启用后扩展为：
+
+```text
+career:{userId}:{uuid}
+```
+
+`userId` 用于隔离用户，`uuid` 用于区分同一用户的不同职业咨询主题。会话归属必须由业务 Service 校验，Agent 只能接收已经校验过的 Conversation ID。
 
 这样：
 
