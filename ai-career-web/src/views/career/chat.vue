@@ -33,6 +33,7 @@ import { getProfile } from '../../api/profile'
 import { getSkills } from '../../api/skill'
 import { useCareerChatStore } from '../../stores/careerChat'
 import type { CareerChatSession, CareerPlan, UserProfile, UserSkill } from '../../types/api'
+import { renderMarkdown } from '../../utils/markdown'
 
 const router = useRouter()
 const careerChatStore = useCareerChatStore()
@@ -227,14 +228,6 @@ function chooseQuestion(question: string) {
   message.value = question
 }
 
-function formatChatContent(content: string) {
-  return content
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/^\s*[-*]\s+/gm, '• ')
-}
-
 function retry() {
   if (!failedRequest.value) return
   const request = failedRequest.value
@@ -412,9 +405,13 @@ async function handlePlanAction() {
             </span>
             <div class="message-bubble">
               <small v-if="item.role === 'assistant'">AI 职业规划师</small>
-              <p :class="{ 'streaming-content': sending && item.id === messages[messages.length - 1]?.id && item.role === 'assistant' }">
-                {{ formatChatContent(item.content) }}
-              </p>
+              <div
+                v-if="item.role === 'assistant'"
+                class="markdown-content"
+                :class="{ 'streaming-content': sending && item.id === messages[messages.length - 1]?.id }"
+                v-html="renderMarkdown(item.content)"
+              />
+              <p v-else>{{ item.content }}</p>
             </div>
           </article>
 
@@ -565,12 +562,41 @@ async function handlePlanAction() {
 .message-avatar { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #595dd8, #8872e7); }
 .message-bubble { padding: 14px 17px; border: 1px solid var(--line); border-radius: 4px 15px 15px; background: #fff; box-shadow: 0 5px 16px rgba(55, 57, 104, 0.04); }
 .message-bubble small { color: var(--primary); font-weight: 700; }
-.message-bubble p { margin: 7px 0 0; color: #44495e; line-height: 1.75; white-space: pre-wrap; }
-.streaming-content::after { display: inline-block; width: 2px; height: 1em; margin-left: 3px; background: var(--primary); content: ''; vertical-align: -2px; animation: cursor-blink 0.8s steps(1) infinite; }
+.message-bubble > p { margin: 7px 0 0; color: #44495e; line-height: 1.75; white-space: pre-wrap; }
+.markdown-content { min-width: 0; margin-top: 7px; color: #44495e; line-height: 1.75; overflow-wrap: anywhere; }
+.markdown-content :deep(> :first-child) { margin-top: 0; }
+.markdown-content :deep(> :last-child) { margin-bottom: 0; }
+.markdown-content :deep(p) { margin: 0 0 10px; }
+.markdown-content :deep(h1),
+.markdown-content :deep(h2),
+.markdown-content :deep(h3),
+.markdown-content :deep(h4),
+.markdown-content :deep(h5),
+.markdown-content :deep(h6) { margin: 16px 0 8px; color: #30344b; line-height: 1.4; }
+.markdown-content :deep(h1) { font-size: 20px; }
+.markdown-content :deep(h2) { font-size: 18px; }
+.markdown-content :deep(h3) { font-size: 16px; }
+.markdown-content :deep(h4),
+.markdown-content :deep(h5),
+.markdown-content :deep(h6) { font-size: 14px; }
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) { margin: 8px 0 10px; padding-left: 24px; }
+.markdown-content :deep(li + li) { margin-top: 4px; }
+.markdown-content :deep(blockquote) { margin: 10px 0; padding: 7px 12px; border-left: 3px solid #aeb0eb; color: #686c82; background: #f6f6fc; }
+.markdown-content :deep(a) { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.markdown-content :deep(code) { padding: 2px 5px; border-radius: 5px; color: #c13d67; background: #f3f3f8; font-family: Consolas, Monaco, monospace; font-size: 0.9em; }
+.markdown-content :deep(pre) { max-width: 100%; margin: 10px 0; padding: 12px 14px; overflow-x: auto; border-radius: 9px; color: #e8e9f2; background: #282b3d; line-height: 1.6; }
+.markdown-content :deep(pre code) { padding: 0; color: inherit; background: transparent; font-size: 12px; }
+.markdown-content :deep(table) { display: block; max-width: 100%; margin: 10px 0; overflow-x: auto; border-spacing: 0; border-collapse: collapse; }
+.markdown-content :deep(th),
+.markdown-content :deep(td) { padding: 7px 10px; border: 1px solid #dddfea; text-align: left; white-space: nowrap; }
+.markdown-content :deep(th) { color: #373b52; background: #f3f3fa; }
+.markdown-content :deep(hr) { margin: 14px 0; border: 0; border-top: 1px solid var(--line); }
+.markdown-content.streaming-content :deep(> :last-child)::after { display: inline-block; width: 2px; height: 1em; margin-left: 3px; background: var(--primary); content: ''; vertical-align: -2px; animation: cursor-blink 0.8s steps(1) infinite; }
 .chat-message.user { margin-left: auto; flex-direction: row-reverse; }
 .chat-message.user .message-avatar { background: #2e9c77; }
 .chat-message.user .message-bubble { border-radius: 15px 4px 15px 15px; background: #eff9f5; }
-.chat-message.user .message-bubble p { margin-top: 0; }
+.chat-message.user .message-bubble > p { margin-top: 0; }
 .chat-message.failed .message-bubble { border-color: #efb5b5; background: #fff7f7; }
 .typing-dots { display: flex; gap: 5px; min-width: 50px; padding: 10px 2px 3px; }
 .typing-dots i { width: 7px; height: 7px; border-radius: 50%; background: #9699af; animation: pulse 1.2s infinite ease-in-out; }
