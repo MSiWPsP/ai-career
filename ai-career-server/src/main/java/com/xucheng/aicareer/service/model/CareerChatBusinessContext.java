@@ -3,12 +3,18 @@ package com.xucheng.aicareer.service.model;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * 单次职业规划聊天使用的只读业务快照。
+ *
+ * <p>该对象仅向 Agent 暴露回答所需字段，避免直接传递持久化实体及内部字段。</p>
+ */
 public record CareerChatBusinessContext(
         Profile profile,
         List<Skill> skills,
         Plan currentPlan) {
 
     public CareerChatBusinessContext {
+        // 使用不可变空集合统一表达“未填写技能”，便于 Prompt 明确区分缺失数据。
         skills = skills == null ? List.of() : List.copyOf(skills);
     }
 
@@ -55,6 +61,7 @@ public record CareerChatBusinessContext(
             List<RoadmapStage> roadmap) {
 
         public Plan {
+            // 防止模型调用期间上游集合被修改，同时消除可选集合的 null 分支。
             advantages = advantages == null ? List.of() : List.copyOf(advantages);
             weaknesses = weaknesses == null ? List.of() : List.copyOf(weaknesses);
             roadmap = roadmap == null ? List.of() : List.copyOf(roadmap);

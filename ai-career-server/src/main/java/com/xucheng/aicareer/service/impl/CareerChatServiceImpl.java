@@ -25,6 +25,12 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * AI 职业规划师聊天编排实现。
+ *
+ * <p>数据库消息是事实来源；ChatMemory 仅在调用模型前由数据库近期消息重建。这样既支持服务重启恢复，
+ * 又能保证页面历史记录与模型实际上下文一致。</p>
+ */
 @Service
 public class CareerChatServiceImpl implements CareerChatService {
 
@@ -51,6 +57,7 @@ public class CareerChatServiceImpl implements CareerChatService {
     public CareerChatVO chat(CareerChatDTO chatDTO) {
         CareerChatTurnContext turn = conversationService.prepareTurn(
                 chatDTO.getConversationId(), chatDTO.getClientMessageId(), chatDTO.getMessage().trim());
+        // 相同 clientMessageId 已完成时直接返回历史答案，避免重试重复调用模型和重复落库。
         if (turn.replayContent() != null) {
             return toChatVO(turn, turn.replayContent());
         }
@@ -79,7 +86,9 @@ public class CareerChatServiceImpl implements CareerChatService {
                     CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId()));
         }
 
+        // 流式分片先累积在服务端，只有模型正常结束后才将完整 AI 消息持久化。
         StringBuilder response = new StringBuilder();
+        // Reactor 的错误和取消回调可能竞争触发，原子标记确保失败收尾只执行一次。
         AtomicBoolean finalized = new AtomicBoolean(false);
         Flux<String> contentFlux;
         try {
@@ -101,6 +110,7 @@ public class CareerChatServiceImpl implements CareerChatService {
                     conversationService.completeTurn(turn, response.toString());
                     finalized.set(true);
                 })
+                // done 事件必须位于持久化成功之后，避免前端显示完成但数据库仍未落库。
                 .concatWithValues(CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId()))
                 .onErrorResume(exception -> {
                     failTurn(turn, finalized);
@@ -152,6 +162,7 @@ public class CareerChatServiceImpl implements CareerChatService {
     }
 
     private void restoreMemory(CareerChatTurnContext turn) {
+        // 每轮先清空再从数据库恢复，避免内存残留、重复消息以及后端重启后的上下文偏差。
         careerPlannerChatMemory.clear(turn.conversationId());
         List<Message> messages = conversationService
                 .getRecentMemory(turn.userId(), turn.conversationId(), memoryMessageLimit)

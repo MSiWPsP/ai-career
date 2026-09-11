@@ -8,6 +8,9 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 职业规划聊天会话实体，保存会话归属、状态及列表展示所需的摘要数据。
+ */
 @Data
 @TableName("career_chat_session")
 public class CareerChatSession {

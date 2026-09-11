@@ -7,6 +7,11 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 职业规划聊天消息实体。
+ *
+ * <p>同一 sessionId、clientMessageId 和 role 的组合在数据库中唯一，用于保证一轮问答幂等。</p>
+ */
 @Data
 @TableName("career_chat_message")
 public class CareerChatMessage {

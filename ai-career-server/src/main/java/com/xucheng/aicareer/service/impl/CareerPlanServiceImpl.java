@@ -29,6 +29,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * 结构化职业规划业务实现。
+ *
+ * <p>先校验画像和技能，再调用 Agent；只有模型结果完整有效时，才在同一事务中保存规划及成长任务。</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class CareerPlanServiceImpl implements CareerPlanService {
@@ -69,6 +74,7 @@ public class CareerPlanServiceImpl implements CareerPlanService {
 
         CareerPlanResult result = careerPlannerAgent.generatePlan(userId, profile, skills);
         CareerPlan savedPlan = transactionTemplate.execute(status -> {
+            // Agent 调用不占用数据库事务；落库前再次检查，防止并发请求各自生成一份首版规划。
             if (careerPlanMapper.exists(Wrappers.<CareerPlan>lambdaQuery()
                     .eq(CareerPlan::getUserId, userId))) {
                 throw new BusinessException(409, "职业规划已存在，请使用重新规划功能");
@@ -121,6 +127,7 @@ public class CareerPlanServiceImpl implements CareerPlanService {
     }
 
     private CareerPlanVO toCareerPlanVO(CareerPlan plan) {
+        // JSON 字段在业务边界统一反序列化，Controller 不直接感知数据库存储格式。
         return CareerPlanVO.builder()
                 .id(plan.getId())
                 .version(plan.getVersion())
@@ -155,6 +162,7 @@ public class CareerPlanServiceImpl implements CareerPlanService {
     }
 
     private void saveCareerTasks(Long userId, Long planId, List<RoadmapStage> roadmap) {
+        // Agent 输出的阶段任务拆分为独立成长任务，后续可单独更新完成状态。
         for (RoadmapStage stage : roadmap) {
             for (CareerTaskResult result : stage.getTasks()) {
                 CareerTask task = new CareerTask();

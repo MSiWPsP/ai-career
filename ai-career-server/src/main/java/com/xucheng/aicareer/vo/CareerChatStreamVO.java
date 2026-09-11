@@ -4,6 +4,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+/**
+ * SSE 职业规划聊天事件。
+ *
+ * <p>delta 携带文本增量，done 表示本轮已完整落库，error 表示本轮失败且可以使用原 clientMessageId 重试。</p>
+ */
 @Data
 @Builder
 @Schema(description = "职业规划师流式聊天事件")

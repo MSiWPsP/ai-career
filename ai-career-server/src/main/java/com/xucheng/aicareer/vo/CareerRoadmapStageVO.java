@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/** 职业规划中的单个成长路线阶段视图。 */
 @Data
 @Builder
 @NoArgsConstructor

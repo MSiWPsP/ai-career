@@ -30,6 +30,11 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 
+/**
+ * 职业规划模块 HTTP 入口。
+ *
+ * <p>Controller 只负责参数校验、SSE 事件封装和统一响应，不包含 Agent 或数据库业务逻辑。</p>
+ */
 @RestController
 @RequestMapping("/api/career")
 @RequiredArgsConstructor
@@ -49,6 +54,7 @@ public class CareerController {
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "与AI职业规划师流式聊天", description = "通过SSE依次返回delta、done或error事件，每次请求读取最新职业画像、技能和当前规划，并按当前用户保持近期对话记忆")
     public Flux<ServerSentEvent<CareerChatStreamVO>> chatStream(@Valid @RequestBody CareerChatDTO chatDTO) {
+        // Service 返回领域事件，Controller 在传输边界转换为标准 SSE 事件。
         return careerChatService.chatStream(chatDTO)
                 .map(item -> ServerSentEvent.<CareerChatStreamVO>builder()
                         .event(item.getType())

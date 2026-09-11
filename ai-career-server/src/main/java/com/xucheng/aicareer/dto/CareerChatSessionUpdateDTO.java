@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/** 职业规划聊天会话的可变元数据。 */
 @Data
 @Schema(description = "职业规划聊天会话更新请求")
 public class CareerChatSessionUpdateDTO {

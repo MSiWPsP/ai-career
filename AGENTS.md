@@ -12,6 +12,7 @@
 - `ai-career-server/`：Java 21、Spring Boot、MyBatis-Plus、MySQL、JWT、Knife4j/OpenAPI。
 - `ai-career-web/`：Vue 3、TypeScript、Vite、Pinia、Axios、Element Plus、ECharts。
 - 后端保持现有 Controller / Service / Mapper / DTO / VO 分层和统一 `Result` 响应结构。
+- 后端新增或修改的核心类、Service 接口及非直观业务流程应补充中文注释，重点说明职责、调用契约和设计原因；避免为简单赋值、Getter/Setter 或显而易见的代码堆砌注释。
 - 前端优先复用现有 API 封装、类型、Store、布局与全局主题，不另建平行架构。
 
 ## 前端约定

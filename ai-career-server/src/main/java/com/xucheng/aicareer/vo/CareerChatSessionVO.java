@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/** 面向前端会话列表的职业规划聊天会话视图。 */
 @Data
 @Builder
 @Schema(description = "职业规划聊天会话")

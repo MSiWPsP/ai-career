@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+/** 非流式职业规划聊天的完整回复。 */
 @Data
 @Builder
 @Schema(description = "AI职业规划师普通聊天回复")

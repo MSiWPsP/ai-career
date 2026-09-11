@@ -11,9 +11,17 @@ import org.springframework.core.io.Resource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * AI 对话客户端配置。
+ *
+ * <p>普通聊天和结构化规划使用独立的 ChatClient，避免聊天记忆及输出约束相互污染。</p>
+ */
 @Configuration
 public class AiConfig {
 
+    /**
+     * 创建带职业规划师 System Prompt 和会话记忆的普通聊天客户端。
+     */
     @Bean
     public ChatClient careerPlannerChatClient(
             ChatClient.Builder builder,
@@ -25,6 +33,9 @@ public class AiConfig {
                 .build();
     }
 
+    /**
+     * 创建结构化职业规划客户端。该客户端不挂载聊天记忆，保证每次生成只依赖本次业务快照。
+     */
     @Bean
     public ChatClient careerPlanGenerationChatClient(
             ChatClient.Builder builder,

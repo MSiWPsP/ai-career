@@ -21,6 +21,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 职业规划领域 Agent，封装普通聊天和结构化职业规划两类模型调用。
+ *
+ * <p>该组件只消费业务 Service 提供的数据，不直接访问数据库。模型返回的结构化结果在离开
+ * Agent 边界前会进行业务校验，避免无效数据进入持久化层。</p>
+ */
 @Slf4j
 @Component
 public class CareerPlannerAgent {
@@ -44,6 +50,15 @@ public class CareerPlannerAgent {
     @Value("${spring.ai.openai.chat.model:unknown}")
     private String model;
 
+    /**
+     * 执行一次普通非流式职业咨询。
+     *
+     * @param userId 用于调用日志关联，不写入 Prompt
+     * @param conversationId ChatMemory 的会话隔离标识
+     * @param message 用户问题
+     * @param businessContext 本次请求读取的最新业务快照
+     * @return 去除首尾空白后的模型回复
+     */
     public String chat(
             Long userId,
             String conversationId,
@@ -74,6 +89,11 @@ public class CareerPlannerAgent {
         }
     }
 
+    /**
+     * 执行一次普通流式职业咨询。
+     *
+     * <p>流中只暴露有效文本分片，空响应及供应商异常统一映射为 AiServiceException。</p>
+     */
     public Flux<String> chatStream(
             Long userId,
             String conversationId,
@@ -99,6 +119,11 @@ public class CareerPlannerAgent {
         }
     }
 
+    /**
+     * 根据完整职业画像和技能快照生成结构化职业规划。
+     *
+     * <p>模型结果未通过本地结构校验时最多重试一次，避免偶发格式漂移直接导致请求失败。</p>
+     */
     public CareerPlanResult generatePlan(
             Long userId, UserProfileVO profile, List<UserSkillVO> skills) {
         long startTime = System.currentTimeMillis();
@@ -149,6 +174,7 @@ public class CareerPlannerAgent {
     }
 
     private void validateGeneratedPlan(CareerPlanResult result) {
+        // 结构化映射成功不等于业务数据有效，持久化前仍需校验字段范围、数量和阶段顺序。
         require(result != null, "规划结果不能为空");
         require(hasTextWithin(result.getTargetPosition(), 100), "目标岗位无效");
         require(result.getMatchScore() != null

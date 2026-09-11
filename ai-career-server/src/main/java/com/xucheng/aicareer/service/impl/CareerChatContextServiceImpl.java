@@ -16,6 +16,11 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * 基于现有业务 Service 构建职业规划聊天上下文。
+ *
+ * <p>画像和当前规划不存在是正常的可选状态，会转换为 null 交由 Prompt 判断；其他业务异常继续向上抛出。</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class CareerChatContextServiceImpl implements CareerChatContextService {
@@ -28,6 +33,7 @@ public class CareerChatContextServiceImpl implements CareerChatContextService {
 
     @Override
     public CareerChatBusinessContext getCurrentContext() {
+        // 每次提问都重新读取，保证用户刚更新的画像、技能或规划立即对 Agent 生效。
         UserProfileVO profile = readOptional(userProfileService::getCurrentProfile);
         List<UserSkillVO> skills = userSkillService.getCurrentUserSkills();
         CareerPlanVO currentPlan = readOptional(careerPlanService::getCurrentPlan);
@@ -41,6 +47,7 @@ public class CareerChatContextServiceImpl implements CareerChatContextService {
         try {
             return supplier.get();
         } catch (BusinessException exception) {
+            // 404 表示该类资料尚未创建，不应使普通聊天整体失败。
             if (Integer.valueOf(NOT_FOUND).equals(exception.getCode())) {
                 return null;
             }

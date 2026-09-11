@@ -24,6 +24,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * 职业规划聊天会话与消息的 MySQL 持久化实现。
+ *
+ * <p>通过 userId 与 conversationId 联合查询保证会话隔离，并利用 clientMessageId 实现消息级幂等。</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class CareerConversationServiceImpl implements CareerConversationService {
@@ -128,6 +133,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
     public CareerChatTurnContext prepareTurn(String conversationId, String clientMessageId, String content) {
         Long userId = UserContext.getUserId();
         CareerChatSession session = resolveConversation(userId, conversationId);
+        // 锁定会话行，使并发请求串行计算 messageOrder 并检查待处理消息。
         session = getConversationForUpdate(userId, session.getConversationId());
         if (session.getStatus() != SESSION_ACTIVE) {
             throw new BusinessException(409, "该会话已归档，请恢复后继续对话");
@@ -135,6 +141,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
 
         String requestId = StringUtils.hasText(clientMessageId)
                 ? clientMessageId.trim() : UUID.randomUUID().toString();
+        // 客户端异常退出可能遗留 pending 消息，超时后转为 failed 才允许用户继续或重试。
         messageMapper.update(null, Wrappers.<CareerChatMessage>lambdaUpdate()
                 .eq(CareerChatMessage::getSessionId, session.getId())
                 .eq(CareerChatMessage::getStatus, MESSAGE_PENDING)
@@ -154,6 +161,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
             throw new BusinessException(409, "客户端消息标识已被其他内容使用");
         }
         if (existingAssistant != null && existingAssistant.getStatus() == MESSAGE_COMPLETED) {
+            // 已完成的请求直接携带历史答案返回，上层不会再次调用 Agent。
             return new CareerChatTurnContext(
                     session.getId(), userId, session.getConversationId(), requestId, existingAssistant.getContent());
         }
@@ -191,6 +199,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
         CareerChatSession session = getRequiredConversation(turn.userId(), turn.conversationId());
         CareerChatMessage userMessage = findRequiredUserMessage(turn);
         CareerChatMessage assistantMessage = findTurnMessage(turn.sessionId(), turn.clientMessageId(), ROLE_ASSISTANT);
+        // 唯一索引和此处判断共同保证重试不会重复插入 assistant 消息或累计消息数。
         boolean newlyCompleted = assistantMessage == null;
         if (newlyCompleted) {
             assistantMessage = new CareerChatMessage();
@@ -233,6 +242,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
     @Override
     public List<CareerChatMemoryEntry> getRecentMemory(Long userId, String conversationId, int limit) {
         CareerChatSession session = getRequiredConversation(userId, conversationId);
+        // 数据库倒序查询便于使用 LIMIT 截取最近窗口，返回给模型前再恢复为正序。
         List<CareerChatMessage> messages = new ArrayList<>(messageMapper.selectList(
                 Wrappers.<CareerChatMessage>lambdaQuery()
                         .eq(CareerChatMessage::getSessionId, session.getId())
@@ -250,6 +260,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
         if (StringUtils.hasText(conversationId)) {
             return getRequiredConversation(userId, conversationId.trim());
         }
+        // 兼容首次不传 conversationId 的客户端：优先沿用最近活跃会话，没有时再自动创建。
         CareerChatSession latest = sessionMapper.selectOne(Wrappers.<CareerChatSession>lambdaQuery()
                 .eq(CareerChatSession::getUserId, userId)
                 .eq(CareerChatSession::getStatus, SESSION_ACTIVE)

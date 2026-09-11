@@ -6,6 +6,11 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * 职业规划师聊天请求参数。
+ *
+ * <p>clientMessageId 由客户端生成，同一条消息重试时必须保持不变。</p>
+ */
 @Data
 @Schema(description = "AI职业规划师普通聊天请求")
 public class CareerChatDTO {
