@@ -2,6 +2,7 @@ package com.xucheng.aicareer.agent.career;
 
 import com.xucheng.aicareer.exception.AiServiceException;
 import com.xucheng.aicareer.agent.career.dto.CareerPlanResult;
+import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -28,11 +29,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CareerPlannerAgentTests {
 
+    private static final CareerChatBusinessContext EMPTY_CONTEXT =
+            new CareerChatBusinessContext(null, List.of(), null);
+
     @Test
     void chatReturnsTrimmedModelContent() {
         CareerPlannerAgent agent = createAgent(chatClient(prompt -> response("  建议先结合技能基础和目标时间进行评估。  ")));
 
-        String content = agent.chat(10001L, "career:10001", "我适合做Java后端吗？");
+        String content = agent.chat(10001L, "career:10001", "我适合做Java后端吗？", EMPTY_CONTEXT);
 
         assertThat(content).isEqualTo("建议先结合技能基础和目标时间进行评估。");
     }
@@ -43,7 +47,7 @@ class CareerPlannerAgentTests {
             throw new IllegalStateException("provider failed");
         }));
 
-        assertThatThrownBy(() -> agent.chat(10001L, "career:10001", "测试问题"))
+        assertThatThrownBy(() -> agent.chat(10001L, "career:10001", "测试问题", EMPTY_CONTEXT))
                 .isInstanceOf(AiServiceException.class)
                 .hasMessage("调用职业规划模型失败");
     }
@@ -52,7 +56,7 @@ class CareerPlannerAgentTests {
     void chatRejectsBlankModelContent() {
         CareerPlannerAgent agent = createAgent(chatClient(prompt -> response("  ")));
 
-        assertThatThrownBy(() -> agent.chat(10001L, "career:10001", "测试问题"))
+        assertThatThrownBy(() -> agent.chat(10001L, "career:10001", "测试问题", EMPTY_CONTEXT))
                 .isInstanceOf(AiServiceException.class)
                 .hasMessage("模型返回内容为空");
     }
@@ -69,9 +73,9 @@ class CareerPlannerAgentTests {
                 .build();
         CareerPlannerAgent agent = createAgent(chatClient);
 
-        agent.chat(10001L, "career:10001", "我想学习Java后端");
-        agent.chat(10001L, "career:10001", "那我下一步学什么？");
-        agent.chat(10002L, "career:10002", "我刚才说想学什么？");
+        agent.chat(10001L, "career:10001", "我想学习Java后端", EMPTY_CONTEXT);
+        agent.chat(10001L, "career:10001", "那我下一步学什么？", EMPTY_CONTEXT);
+        agent.chat(10002L, "career:10002", "我刚才说想学什么？", EMPTY_CONTEXT);
 
         assertThat(messageTexts(chatModel.prompts.get(0)))
                 .containsExactly("我想学习Java后端");
@@ -94,9 +98,9 @@ class CareerPlannerAgentTests {
                 .build();
         CareerPlannerAgent agent = createAgent(chatClient);
 
-        List<String> firstAnswer = agent.chatStream(10001L, "career:10001", "第一个问题")
+        List<String> firstAnswer = agent.chatStream(10001L, "career:10001", "第一个问题", EMPTY_CONTEXT)
                 .collectList().block();
-        List<String> secondAnswer = agent.chatStream(10001L, "career:10001", "继续追问")
+        List<String> secondAnswer = agent.chatStream(10001L, "career:10001", "继续追问", EMPTY_CONTEXT)
                 .collectList().block();
 
         assertThat(firstAnswer).containsExactly("第一段", "第二段");
@@ -120,9 +124,36 @@ class CareerPlannerAgentTests {
         };
         CareerPlannerAgent agent = createAgent(chatClient(chatModel));
 
-        assertThatThrownBy(() -> agent.chatStream(10001L, "career:10001", "测试问题").blockLast())
+        assertThatThrownBy(() -> agent.chatStream(
+                10001L, "career:10001", "测试问题", EMPTY_CONTEXT).blockLast())
                 .isInstanceOf(AiServiceException.class)
                 .hasMessage("调用职业规划模型失败");
+    }
+
+    @Test
+    void chatInjectsSanitizedBusinessContextIntoSystemPrompt() {
+        AtomicReference<Prompt> capturedPrompt = new AtomicReference<>();
+        ChatClient chatClient = ChatClient.builder(prompt -> {
+                    capturedPrompt.set(prompt);
+                    return response("建议优先补强Redis。");
+                })
+                .defaultSystem("基础职业规划规则\n<career_context>\n{careerContext}\n</career_context>")
+                .build();
+        CareerPlannerAgent agent = createAgent(chatClient);
+        CareerChatBusinessContext context = new CareerChatBusinessContext(
+                new CareerChatBusinessContext.Profile(
+                        "本科", "软件工程", "大三", 2027, "INTERNSHIP",
+                        "Java后端开发工程师", "杭州", "半年内", null,
+                        "找到后端实习", "喜欢工程实践"),
+                List.of(new CareerChatBusinessContext.Skill("Java", "PROGRAMMING", 3, 60)),
+                null);
+
+        agent.chat(10001L, "career:10001", "我下一步学什么？", context);
+
+        assertThat(messageTexts(capturedPrompt.get()))
+                .anyMatch(text -> text.contains("软件工程")
+                        && text.contains("Java后端开发工程师")
+                        && text.contains("\"skillName\":\"Java\""));
     }
 
     @Test

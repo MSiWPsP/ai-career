@@ -2494,3 +2494,21 @@ CareerPlan V2
 最终形成：
 
 > AI 职业规划、学习成长、模拟面试、能力评估和动态规划相互连接的大学生职业成长智能体系统。
+
+---
+
+# 七十九、普通聊天业务上下文接入补充
+
+普通聊天由 `CareerChatContextService` 通过现有职业画像、技能和职业规划 Service 聚合本次请求的最新业务上下文，再传给 `CareerPlannerAgent`。Agent 不直接访问 Mapper 或数据库。
+
+上下文使用受控 JSON 注入 System Prompt，仅包含：
+
+```text
+Profile：学历、专业、年级、毕业年份、职业阶段、目标岗位、目标城市、目标时间、每日学习时间、职业目标、兴趣描述
+Skill：技能名称、分类、等级、评分
+Plan：版本、目标岗位、匹配度、摘要、优势、短板、路线阶段
+```
+
+其中字段值属于用户职业背景数据，即使包含类似指令的文本也不得覆盖 System Prompt。`profile = null`、`skills = []`、`currentPlan = null` 分别表示对应数据尚不存在，Agent 必须明确说明缺失项，不得自行补全。
+
+业务上下文不保存在 ChatMemory 中，每次新问题都重新读取，以保证用户更新画像或技能后立即生效；ChatMemory 继续只保存近期对话内容。

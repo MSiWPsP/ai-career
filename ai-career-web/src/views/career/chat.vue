@@ -30,8 +30,9 @@ import {
   updateCareerConversation,
 } from '../../api/career'
 import { getProfile } from '../../api/profile'
+import { getSkills } from '../../api/skill'
 import { useCareerChatStore } from '../../stores/careerChat'
-import type { CareerChatSession, CareerPlan, UserProfile } from '../../types/api'
+import type { CareerChatSession, CareerPlan, UserProfile, UserSkill } from '../../types/api'
 
 const router = useRouter()
 const careerChatStore = useCareerChatStore()
@@ -44,6 +45,7 @@ const showSessions = ref(false)
 const includeArchived = ref(false)
 const sessions = ref<CareerChatSession[]>([])
 const profile = ref<UserProfile>()
+const skills = ref<UserSkill[]>([])
 const currentPlan = ref<CareerPlan>()
 const planGenerating = ref(false)
 let activeRequestController: AbortController | undefined
@@ -52,6 +54,21 @@ const activeSession = computed(() =>
   sessions.value.find((item) => item.conversationId === conversationId.value),
 )
 const conversationArchived = computed(() => activeSession.value?.status === 0)
+const contextTip = computed(() => {
+  const available: string[] = []
+  const missing: string[] = []
+  if (profile.value) available.push('职业画像')
+  else missing.push('职业画像')
+  if (skills.value.length) available.push(`${skills.value.length} 项技能`)
+  else missing.push('技能')
+  if (currentPlan.value) available.push(`V${currentPlan.value.version} 职业规划`)
+
+  if (!available.length) {
+    return '尚未查询到职业画像或技能，AI 会在信息不足时提醒你补充。'
+  }
+  const suffix = missing.length ? `尚未填写${missing.join('和')}。` : ''
+  return `AI 每次提问都会自动读取最新的${available.join('、')}。${suffix}`
+})
 
 const quickQuestions = [
   '我适合做 Java 后端吗？',
@@ -76,12 +93,15 @@ onMounted(async () => {
 onBeforeUnmount(() => activeRequestController?.abort())
 
 async function loadContext() {
-  const [profileResult, planResult] = await Promise.allSettled([
+  contextLoading.value = true
+  const [profileResult, skillResult, planResult] = await Promise.allSettled([
     getProfile({ silent: true }),
+    getSkills({ silent: true }),
     getCurrentPlan({ silent: true }),
   ])
-  if (profileResult.status === 'fulfilled') profile.value = profileResult.value
-  if (planResult.status === 'fulfilled') currentPlan.value = planResult.value
+  profile.value = profileResult.status === 'fulfilled' ? profileResult.value : undefined
+  skills.value = skillResult.status === 'fulfilled' ? skillResult.value : []
+  currentPlan.value = planResult.status === 'fulfilled' ? planResult.value : undefined
   contextLoading.value = false
 }
 
@@ -198,7 +218,7 @@ async function send(content = message.value, retryClientMessageId?: string) {
     careerChatStore.failSending(question, clientMessageId)
   } finally {
     activeRequestController = undefined
-    if (completed) await refreshConversations()
+    if (completed) await Promise.all([refreshConversations(), loadContext()])
     await scrollToBottom()
   }
 }
@@ -470,15 +490,16 @@ async function handlePlanAction() {
           <el-icon><MagicStick /></el-icon>
           <div><p class="eyebrow">CURRENT CONTEXT</p><h2>当前职业画像</h2></div>
         </div>
-        <template v-if="profile || currentPlan">
+        <template v-if="profile || skills.length || currentPlan">
           <div class="context-item"><span>目标岗位</span><strong>{{ profile?.targetPosition || currentPlan?.targetPosition || '暂未填写' }}</strong></div>
           <div class="context-item"><span>当前阶段</span><strong>{{ careerStageLabel[profile?.careerStage || ''] || '暂未填写' }}</strong></div>
+          <div class="context-item"><span>已记录技能</span><strong>{{ skills.length ? `${skills.length} 项` : '暂未填写' }}</strong></div>
           <div class="context-item"><span>当前规划</span><strong>{{ currentPlan ? `V${currentPlan.version} · 匹配度 ${currentPlan.matchScore ?? '—'}%` : '暂未生成' }}</strong></div>
         </template>
         <div v-else-if="!contextLoading" class="context-empty">
           <p>还没有可展示的职业画像。</p>
         </div>
-        <p class="context-tip">当前对话暂未自动读取这些数据，请在提问时补充相关背景。</p>
+        <p class="context-tip">{{ contextTip }}</p>
         <el-button class="profile-button" @click="router.push('/profile')">查看并完善画像</el-button>
         <el-button class="plan-button" type="primary" :loading="planGenerating" @click="handlePlanAction">
           {{ currentPlan ? '查看职业规划' : '生成完整职业规划' }}

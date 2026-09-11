@@ -2502,3 +2502,19 @@ DELETE /api/career/conversations/{conversationId}
 ```
 
 其中 `PUT` 支持修改标题以及归档、恢复状态。所有接口均从 JWT 获取当前用户，并使用 `userId + conversationId` 联合校验归属。
+
+---
+
+# 八十五、职业规划聊天业务上下文
+
+`POST /api/career/chat` 与 `POST /api/career/chat/stream` 在每次新问题调用模型前，由业务 Service 读取当前用户最新的：
+
+```text
+职业画像
+用户技能
+当前职业规划
+```
+
+只向 Agent 传递职业规划所需字段，不传递用户名、手机号、头像、密码或访问凭证。职业画像或当前规划不存在时不返回 404，而是向模型提供明确的空值，由 Agent 说明缺失信息并引导用户完善资料。
+
+该上下文是每次请求的最新快照，不写入 ChatMemory；ChatMemory 仍只负责近期用户消息与 AI 回复。已完成消息的幂等重放直接返回原答案，不重新调用模型。

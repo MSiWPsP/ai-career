@@ -4,7 +4,9 @@ import com.xucheng.aicareer.agent.career.CareerPlannerAgent;
 import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
 import com.xucheng.aicareer.service.CareerChatService;
+import com.xucheng.aicareer.service.CareerChatContextService;
 import com.xucheng.aicareer.service.CareerConversationService;
+import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
 import com.xucheng.aicareer.vo.CareerChatMessageVO;
@@ -28,16 +30,19 @@ public class CareerChatServiceImpl implements CareerChatService {
 
     private final CareerPlannerAgent careerPlannerAgent;
     private final CareerConversationService conversationService;
+    private final CareerChatContextService contextService;
     private final ChatMemory careerPlannerChatMemory;
     private final int memoryMessageLimit;
 
     public CareerChatServiceImpl(
             CareerPlannerAgent careerPlannerAgent,
             CareerConversationService conversationService,
+            CareerChatContextService contextService,
             @Qualifier("careerPlannerChatMemory") ChatMemory careerPlannerChatMemory,
             @Value("${ai.chat-memory.career.max-messages:20}") int memoryMessageLimit) {
         this.careerPlannerAgent = careerPlannerAgent;
         this.conversationService = conversationService;
+        this.contextService = contextService;
         this.careerPlannerChatMemory = careerPlannerChatMemory;
         this.memoryMessageLimit = memoryMessageLimit;
     }
@@ -50,10 +55,11 @@ public class CareerChatServiceImpl implements CareerChatService {
             return toChatVO(turn, turn.replayContent());
         }
 
-        restoreMemory(turn);
         try {
+            restoreMemory(turn);
+            CareerChatBusinessContext businessContext = contextService.getCurrentContext();
             String content = careerPlannerAgent.chat(
-                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim());
+                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(), businessContext);
             conversationService.completeTurn(turn, content);
             return toChatVO(turn, content);
         } catch (RuntimeException exception) {
@@ -73,13 +79,14 @@ public class CareerChatServiceImpl implements CareerChatService {
                     CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId()));
         }
 
-        restoreMemory(turn);
         StringBuilder response = new StringBuilder();
         AtomicBoolean finalized = new AtomicBoolean(false);
         Flux<String> contentFlux;
         try {
+            restoreMemory(turn);
+            CareerChatBusinessContext businessContext = contextService.getCurrentContext();
             contentFlux = careerPlannerAgent.chatStream(
-                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim());
+                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(), businessContext);
         } catch (RuntimeException exception) {
             failTurn(turn, finalized);
             return Flux.just(CareerChatStreamVO.error(

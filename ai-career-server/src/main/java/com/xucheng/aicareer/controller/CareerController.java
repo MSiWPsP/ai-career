@@ -41,13 +41,13 @@ public class CareerController {
     private final CareerChatService careerChatService;
 
     @PostMapping("/chat")
-    @Operation(summary = "与AI职业规划师普通聊天", description = "非流式兼容接口，已包含近期ChatMemory，暂不包含Tool Calling或RAG")
+    @Operation(summary = "与AI职业规划师普通聊天", description = "非流式兼容接口，每次请求读取最新职业画像、技能和当前规划，并包含近期ChatMemory；暂不包含Tool Calling或RAG")
     public Result<CareerChatVO> chat(@Valid @RequestBody CareerChatDTO chatDTO) {
         return Result.success(careerChatService.chat(chatDTO));
     }
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "与AI职业规划师流式聊天", description = "通过SSE依次返回delta、done或error事件，并按当前用户保持近期对话记忆")
+    @Operation(summary = "与AI职业规划师流式聊天", description = "通过SSE依次返回delta、done或error事件，每次请求读取最新职业画像、技能和当前规划，并按当前用户保持近期对话记忆")
     public Flux<ServerSentEvent<CareerChatStreamVO>> chatStream(@Valid @RequestBody CareerChatDTO chatDTO) {
         return careerChatService.chatStream(chatDTO)
                 .map(item -> ServerSentEvent.<CareerChatStreamVO>builder()

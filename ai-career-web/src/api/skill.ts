@@ -1,6 +1,6 @@
 import type { SkillInput, UserSkill } from '../types/api'
-import { request } from '../utils/request'
+import { request, type RequestConfig } from '../utils/request'
 
-export const getSkills = () => request.get<UserSkill[]>('/skill')
+export const getSkills = (config?: RequestConfig) => request.get<UserSkill[]>('/skill', config)
 export const replaceSkills = (skills: SkillInput[]) =>
   request.put<UserSkill[]>('/skill', { skills })

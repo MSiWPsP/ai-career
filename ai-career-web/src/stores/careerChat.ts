@@ -18,7 +18,7 @@ export interface FailedCareerChatRequest {
   clientMessageId: string
 }
 
-const WELCOME_MESSAGE = '你好，我是你的 AI 职业规划师。你可以和我讨论职业方向、学习路线、实习准备或求职选择。我会记住当前会话的近期上下文；职业画像等业务数据暂未自动读取，请先在问题中补充关键背景。'
+const WELCOME_MESSAGE = '你好，我是你的 AI 职业规划师。你可以和我讨论职业方向、学习路线、实习准备或求职选择。每次提问时，我都会参考你最新的职业画像、技能和当前规划；如果资料不足，我会明确提醒你补充。'
 
 export const useCareerChatStore = defineStore('careerChat', () => {
   const authStore = useAuthStore()

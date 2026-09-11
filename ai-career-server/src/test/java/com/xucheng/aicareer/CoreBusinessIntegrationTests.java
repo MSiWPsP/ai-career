@@ -7,6 +7,7 @@ import com.xucheng.aicareer.dto.UserProfileDTO;
 import com.xucheng.aicareer.dto.UserSkillBatchDTO;
 import com.xucheng.aicareer.dto.UserSkillItemDTO;
 import com.xucheng.aicareer.service.AuthService;
+import com.xucheng.aicareer.service.CareerChatContextService;
 import com.xucheng.aicareer.service.UserService;
 import com.xucheng.aicareer.service.UserProfileService;
 import com.xucheng.aicareer.service.UserSkillService;
@@ -36,6 +37,7 @@ class CoreBusinessIntegrationTests {
     private final UserService userService;
     private final UserProfileService userProfileService;
     private final UserSkillService userSkillService;
+    private final CareerChatContextService careerChatContextService;
     private final JwtUtils jwtUtils;
 
     @AfterEach
@@ -94,5 +96,32 @@ class CoreBusinessIntegrationTests {
                     assertThat(skill.getScore()).isEqualTo(80);
                     assertThat(skill.getSource()).isEqualTo("SELF");
                 });
+
+        assertThat(careerChatContextService.getCurrentContext()).satisfies(context -> {
+            assertThat(context.profile().targetPosition()).isEqualTo("Java后端开发工程师");
+            assertThat(context.skills()).singleElement()
+                    .extracting(skill -> skill.skillName() + ":" + skill.score())
+                    .isEqualTo("Java:80");
+            assertThat(context.currentPlan()).isNull();
+        });
+
+        RegisterDTO secondUser = new RegisterDTO();
+        secondUser.setUsername("test_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+        secondUser.setPassword("123456");
+        secondUser.setNickname("第二位测试用户");
+        authService.register(secondUser);
+        LoginDTO secondLogin = new LoginDTO();
+        secondLogin.setUsername(secondUser.getUsername());
+        secondLogin.setPassword(secondUser.getPassword());
+        UserContext.setUserId(authService.login(secondLogin).getUserId());
+
+        assertThat(careerChatContextService.getCurrentContext()).satisfies(context -> {
+            assertThat(context.profile()).isNull();
+            assertThat(context.skills()).isEmpty();
+            assertThat(context.currentPlan()).isNull();
+        });
+
+        UserContext.setUserId(loginVO.getUserId());
+        assertThat(careerChatContextService.getCurrentContext().profile().grade()).isEqualTo("大四");
     }
 }

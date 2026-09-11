@@ -4,6 +4,7 @@ import com.xucheng.aicareer.agent.career.dto.CareerPlanResult;
 import com.xucheng.aicareer.agent.career.dto.CareerTaskResult;
 import com.xucheng.aicareer.agent.career.dto.RoadmapStage;
 import com.xucheng.aicareer.exception.AiServiceException;
+import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.vo.UserProfileVO;
 import com.xucheng.aicareer.vo.UserSkillVO;
 import lombok.extern.slf4j.Slf4j;
@@ -43,10 +44,15 @@ public class CareerPlannerAgent {
     @Value("${spring.ai.openai.chat.model:unknown}")
     private String model;
 
-    public String chat(Long userId, String conversationId, String message) {
+    public String chat(
+            Long userId,
+            String conversationId,
+            String message,
+            CareerChatBusinessContext businessContext) {
         long startTime = System.currentTimeMillis();
         try {
             String content = careerPlannerChatClient.prompt()
+                    .system(system -> system.param("careerContext", serializeChatContext(businessContext)))
                     .user(message)
                     .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()
@@ -68,10 +74,15 @@ public class CareerPlannerAgent {
         }
     }
 
-    public Flux<String> chatStream(Long userId, String conversationId, String message) {
+    public Flux<String> chatStream(
+            Long userId,
+            String conversationId,
+            String message,
+            CareerChatBusinessContext businessContext) {
         long startTime = System.currentTimeMillis();
         try {
             return careerPlannerChatClient.prompt()
+                    .system(system -> system.param("careerContext", serializeChatContext(businessContext)))
                     .user(message)
                     .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .stream()
@@ -126,6 +137,14 @@ public class CareerPlannerAgent {
                     + "\n</user_data>";
         } catch (Exception exception) {
             throw new AiServiceException("职业规划输入数据处理失败", exception);
+        }
+    }
+
+    private String serializeChatContext(CareerChatBusinessContext businessContext) {
+        try {
+            return objectMapper.writeValueAsString(businessContext);
+        } catch (Exception exception) {
+            throw new AiServiceException("职业咨询上下文处理失败", exception);
         }
     }
 
