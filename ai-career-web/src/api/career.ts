@@ -19,6 +19,8 @@ export const getCurrentPlan = (config?: RequestConfig) =>
 export const getPlanHistory = (config?: RequestConfig) =>
   request.get<CareerPlan[]>('/career/plan/history', config)
 export const getPlanById = (id: number) => request.get<CareerPlan>(`/career/plan/${id}`)
+export const generateCareerPlan = () =>
+  request.post<CareerPlan>('/career/plan/generate', {}, { timeout: 150000 })
 export const chatWithCareerPlanner = (data: CareerChatPayload) =>
   request.post<CareerChatResponse>('/career/chat', data, { timeout: 90000 })
 

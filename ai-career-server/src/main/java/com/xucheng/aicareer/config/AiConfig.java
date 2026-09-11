@@ -19,9 +19,18 @@ public class AiConfig {
             ChatClient.Builder builder,
             @Qualifier("careerPlannerChatMemoryAdvisor") MessageChatMemoryAdvisor careerPlannerChatMemoryAdvisor,
             @Value("classpath:prompts/career-planner-system.md") Resource systemPrompt) throws IOException {
-        return builder
+        return builder.clone()
                 .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
                 .defaultAdvisors(careerPlannerChatMemoryAdvisor)
+                .build();
+    }
+
+    @Bean
+    public ChatClient careerPlanGenerationChatClient(
+            ChatClient.Builder builder,
+            @Value("classpath:prompts/career-plan-generation-system.md") Resource systemPrompt) throws IOException {
+        return builder.clone()
+                .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
                 .build();
     }
 }

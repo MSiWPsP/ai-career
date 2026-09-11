@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { CircleCheck, TrendCharts, Warning } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { getCurrentPlan, getPlanById, getPlanHistory } from '../../api/career'
+import { generateCareerPlan, getCurrentPlan, getPlanById, getPlanHistory } from '../../api/career'
 import RoadmapTimeline from '../../components/RoadmapTimeline.vue'
 import type { CareerPlan, RoadmapStage } from '../../types/api'
 import { formatDate, parseJsonField } from '../../utils/data'
@@ -11,6 +12,7 @@ const router = useRouter()
 const loading = ref(true)
 const plan = ref<CareerPlan>()
 const history = ref<CareerPlan[]>([])
+const generating = ref(false)
 
 const advantages = computed(() => parseJsonField<string[]>(plan.value?.advantages, []))
 const weaknesses = computed(() => parseJsonField<string[]>(plan.value?.weaknesses, []))
@@ -34,6 +36,19 @@ async function switchPlan(id: number) {
     loading.value = false
   }
 }
+
+async function generateFirstPlan() {
+  if (generating.value) return
+  generating.value = true
+  try {
+    const generatedPlan = await generateCareerPlan()
+    plan.value = generatedPlan
+    history.value = [generatedPlan]
+    ElMessage.success('职业规划生成成功')
+  } finally {
+    generating.value = false
+  }
+}
 </script>
 
 <template>
@@ -46,7 +61,8 @@ async function switchPlan(id: number) {
       </div>
       <div class="plan-actions">
         <el-button @click="router.push('/career/chat')">与 AI 讨论规划</el-button>
-        <el-button type="primary" disabled>重新生成规划 · 待接入</el-button>
+        <el-button v-if="plan" type="primary" disabled>重新生成规划 · 待接入</el-button>
+        <el-button v-else type="primary" :loading="generating" @click="generateFirstPlan">生成职业规划</el-button>
       </div>
     </header>
 
@@ -111,8 +127,11 @@ async function switchPlan(id: number) {
       <div>
         <el-icon class="empty-icon"><TrendCharts /></el-icon>
         <strong>你的第一份职业规划还未生成</strong>
-        <p>先完善职业画像和技能信息。AI 规划接口完成后，可直接在这里生成结构化成长路线。</p>
-        <el-button type="primary" @click="router.push('/profile')">完善职业画像</el-button>
+        <p>完善职业画像和技能信息后，让 AI 为你生成结构化、可执行的成长路线。</p>
+        <div class="empty-actions">
+          <el-button @click="router.push('/profile')">完善职业画像</el-button>
+          <el-button type="primary" :loading="generating" @click="generateFirstPlan">生成职业规划</el-button>
+        </div>
       </div>
     </section>
   </div>
@@ -176,6 +195,7 @@ async function switchPlan(id: number) {
 .version-list em { position: absolute; right: 12px; bottom: 12px; color: var(--primary); font-style: normal; font-weight: 800; }
 .plan-empty { min-height: 460px; }
 .plan-empty p { max-width: 460px; margin: 8px auto 20px; line-height: 1.7; }
+.empty-actions { display: flex; justify-content: center; gap: 10px; }
 
 @media (max-width: 800px) {
   .plan-hero { align-items: flex-start; flex-direction: column; }

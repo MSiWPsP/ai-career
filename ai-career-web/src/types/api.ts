@@ -78,9 +78,9 @@ export interface CareerPlan {
   targetPosition: string
   matchScore?: number
   summary?: string
-  advantages?: string | string[]
-  weaknesses?: string | string[]
-  roadmap?: string | RoadmapStage[]
+  advantages?: string[]
+  weaknesses?: string[]
+  roadmap?: RoadmapStage[]
   status: number
   sourceInterviewId?: number
   createTime?: string

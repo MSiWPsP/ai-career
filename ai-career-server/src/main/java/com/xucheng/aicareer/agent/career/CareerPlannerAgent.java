@@ -1,21 +1,44 @@
 package com.xucheng.aicareer.agent.career;
 
+import com.xucheng.aicareer.agent.career.dto.CareerPlanResult;
+import com.xucheng.aicareer.agent.career.dto.CareerTaskResult;
+import com.xucheng.aicareer.agent.career.dto.RoadmapStage;
 import com.xucheng.aicareer.exception.AiServiceException;
-import lombok.RequiredArgsConstructor;
+import com.xucheng.aicareer.vo.UserProfileVO;
+import com.xucheng.aicareer.vo.UserSkillVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class CareerPlannerAgent {
 
+    private static final int MAX_GENERATION_ATTEMPTS = 2;
+    private static final Set<String> TASK_TYPES = Set.of("KNOWLEDGE", "PROJECT", "INTERVIEW", "CAREER");
+
     private final ChatClient careerPlannerChatClient;
+    private final ChatClient careerPlanGenerationChatClient;
+    private final ObjectMapper objectMapper;
+
+    public CareerPlannerAgent(
+            @Qualifier("careerPlannerChatClient") ChatClient careerPlannerChatClient,
+            @Qualifier("careerPlanGenerationChatClient") ChatClient careerPlanGenerationChatClient,
+            ObjectMapper objectMapper) {
+        this.careerPlannerChatClient = careerPlannerChatClient;
+        this.careerPlanGenerationChatClient = careerPlanGenerationChatClient;
+        this.objectMapper = objectMapper;
+    }
 
     @Value("${spring.ai.openai.chat.model:unknown}")
     private String model;
@@ -63,6 +86,105 @@ public class CareerPlannerAgent {
         } catch (Exception exception) {
             throw mapStreamException(exception, userId, conversationId, System.currentTimeMillis() - startTime);
         }
+    }
+
+    public CareerPlanResult generatePlan(
+            Long userId, UserProfileVO profile, List<UserSkillVO> skills) {
+        long startTime = System.currentTimeMillis();
+        RuntimeException lastFailure = null;
+        String userPrompt = buildGenerationPrompt(profile, skills);
+
+        for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+            try {
+                String prompt = attempt == 1
+                        ? userPrompt
+                        : userPrompt + "\n上一次结果未通过结构校验。请严格按照输出结构重新生成，所有必填字段均不得为空。";
+                CareerPlanResult result = careerPlanGenerationChatClient.prompt()
+                        .user(prompt)
+                        .call()
+                        .entity(CareerPlanResult.class);
+                validateGeneratedPlan(result);
+                log.info("Agent结构化调用成功 agent=CareerPlannerAgent userId={} model={} attempt={} durationMs={}",
+                        userId, model, attempt, System.currentTimeMillis() - startTime);
+                return result;
+            } catch (Exception exception) {
+                lastFailure = exception instanceof RuntimeException runtimeException
+                        ? runtimeException : new RuntimeException(exception);
+                log.warn("Agent结构化调用失败 agent=CareerPlannerAgent userId={} model={} attempt={} durationMs={} reason={}",
+                        userId, model, attempt, System.currentTimeMillis() - startTime,
+                        exception.getClass().getSimpleName());
+            }
+        }
+
+        throw new AiServiceException("生成结构化职业规划失败", lastFailure);
+    }
+
+    private String buildGenerationPrompt(UserProfileVO profile, List<UserSkillVO> skills) {
+        try {
+            return "请生成第一版职业规划。以下数据由平台业务服务读取：\n<user_data>\n"
+                    + objectMapper.writeValueAsString(new CareerPlanningInput(profile, skills))
+                    + "\n</user_data>";
+        } catch (Exception exception) {
+            throw new AiServiceException("职业规划输入数据处理失败", exception);
+        }
+    }
+
+    private void validateGeneratedPlan(CareerPlanResult result) {
+        require(result != null, "规划结果不能为空");
+        require(hasTextWithin(result.getTargetPosition(), 100), "目标岗位无效");
+        require(result.getMatchScore() != null
+                && result.getMatchScore() >= 0
+                && result.getMatchScore() <= 100, "匹配度无效");
+        require(StringUtils.hasText(result.getSummary()), "规划摘要不能为空");
+        require(validTextList(result.getAdvantages(), 2, 5), "优势列表无效");
+        require(validTextList(result.getWeaknesses(), 2, 5), "短板列表无效");
+        require(result.getRoadmap() != null
+                && result.getRoadmap().size() >= 3
+                && result.getRoadmap().size() <= 5, "成长路线阶段数量无效");
+
+        Set<Integer> stageNumbers = new HashSet<>();
+        for (int index = 0; index < result.getRoadmap().size(); index++) {
+            RoadmapStage stage = result.getRoadmap().get(index);
+            require(stage != null && Integer.valueOf(index + 1).equals(stage.getStage()), "阶段编号无效");
+            require(stageNumbers.add(stage.getStage()), "阶段编号重复");
+            require(hasTextWithin(stage.getName(), 100), "阶段名称无效");
+            require(StringUtils.hasText(stage.getGoal()), "阶段目标不能为空");
+            require(StringUtils.hasText(stage.getDuration()), "阶段周期不能为空");
+            require(validTextList(stage.getTopics(), 2, 5), "阶段学习主题无效");
+            require(stage.getTasks() != null
+                    && stage.getTasks().size() >= 2
+                    && stage.getTasks().size() <= 4, "阶段任务数量无效");
+            stage.getTasks().forEach(this::validateTask);
+        }
+    }
+
+    private void validateTask(CareerTaskResult task) {
+        require(task != null, "任务不能为空");
+        require(hasTextWithin(task.getTaskName(), 200), "任务名称无效");
+        require(task.getDescription() == null || task.getDescription().length() <= 1000, "任务描述过长");
+        require(TASK_TYPES.contains(task.getTaskType()), "任务类型无效");
+        require(task.getPriority() != null && task.getPriority() >= 1 && task.getPriority() <= 3,
+                "任务优先级无效");
+    }
+
+    private boolean validTextList(List<String> values, int minSize, int maxSize) {
+        return values != null
+                && values.size() >= minSize
+                && values.size() <= maxSize
+                && values.stream().allMatch(StringUtils::hasText);
+    }
+
+    private boolean hasTextWithin(String value, int maxLength) {
+        return StringUtils.hasText(value) && value.length() <= maxLength;
+    }
+
+    private void require(boolean condition, String message) {
+        if (!condition) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private record CareerPlanningInput(UserProfileVO profile, List<UserSkillVO> skills) {
     }
 
     private AiServiceException mapStreamException(

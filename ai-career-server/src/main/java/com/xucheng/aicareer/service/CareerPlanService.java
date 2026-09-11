@@ -6,6 +6,8 @@ import java.util.List;
 
 public interface CareerPlanService {
 
+    CareerPlanVO generatePlan();
+
     CareerPlanVO getCurrentPlan();
 
     List<CareerPlanVO> getPlanHistory();

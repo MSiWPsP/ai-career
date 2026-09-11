@@ -50,6 +50,12 @@ public class CareerController {
                         .build());
     }
 
+    @PostMapping("/plan/generate")
+    @Operation(summary = "生成首版职业规划", description = "读取当前用户职业画像和技能，调用CareerPlannerAgent生成结构化规划并同步创建成长任务")
+    public Result<CareerPlanVO> generatePlan() {
+        return Result.success("职业规划生成成功", careerPlanService.generatePlan());
+    }
+
     @GetMapping("/plan/current")
     @Operation(summary = "获取当前职业规划")
     public Result<CareerPlanVO> getCurrentPlan() {

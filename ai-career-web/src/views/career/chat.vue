@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { ArrowRight, ChatDotRound, Close, MagicStick, RefreshRight, Service, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { getCurrentPlan, streamCareerPlannerChat } from '../../api/career'
+import { generateCareerPlan, getCurrentPlan, streamCareerPlannerChat } from '../../api/career'
 import { getProfile } from '../../api/profile'
 import { useCareerChatStore } from '../../stores/careerChat'
 import type { CareerPlan, UserProfile } from '../../types/api'
@@ -18,6 +18,7 @@ const showQuickQuestions = ref(true)
 const contextLoading = ref(true)
 const profile = ref<UserProfile>()
 const currentPlan = ref<CareerPlan>()
+const planGenerating = ref(false)
 
 const quickQuestions = [
   '我适合做 Java 后端吗？',
@@ -112,6 +113,23 @@ function retry() {
   const question = failedMessage.value
   careerChatStore.clearFailure()
   void send(question, false)
+}
+
+async function handlePlanAction() {
+  if (currentPlan.value) {
+    await router.push('/career/plan')
+    return
+  }
+  if (planGenerating.value) return
+
+  planGenerating.value = true
+  try {
+    currentPlan.value = await generateCareerPlan()
+    ElMessage.success('职业规划生成成功')
+    await router.push('/career/plan')
+  } finally {
+    planGenerating.value = false
+  }
 }
 </script>
 
@@ -213,7 +231,9 @@ function retry() {
         </div>
         <p class="context-tip">当前对话暂未自动读取这些数据，请在提问时补充相关背景。</p>
         <el-button class="profile-button" @click="router.push('/profile')">查看并完善画像</el-button>
-        <el-button class="plan-button" type="primary" disabled>生成完整职业规划 · 待接入</el-button>
+        <el-button class="plan-button" type="primary" :loading="planGenerating" @click="handlePlanAction">
+          {{ currentPlan ? '查看职业规划' : '生成完整职业规划' }}
+        </el-button>
       </aside>
     </section>
   </div>

@@ -6,6 +6,7 @@ import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerPlanService;
 import com.xucheng.aicareer.vo.CareerChatVO;
 import com.xucheng.aicareer.vo.CareerChatStreamVO;
+import com.xucheng.aicareer.vo.CareerPlanVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
@@ -56,5 +57,25 @@ class CareerControllerTests {
         assertThat(events).extracting(ServerSentEvent::event).containsExactly("delta", "done");
         assertThat(events).extracting(ServerSentEvent::data).containsExactly(delta, done);
         verify(careerChatService).chatStream(request);
+    }
+
+    @Test
+    void generatePlanReturnsUnifiedSuccessResult() {
+        CareerPlanService careerPlanService = mock(CareerPlanService.class);
+        CareerChatService careerChatService = mock(CareerChatService.class);
+        CareerController controller = new CareerController(careerPlanService, careerChatService);
+        CareerPlanVO plan = CareerPlanVO.builder()
+                .id(20001L)
+                .version(1)
+                .targetPosition("Java后端开发工程师")
+                .build();
+        when(careerPlanService.generatePlan()).thenReturn(plan);
+
+        Result<CareerPlanVO> result = controller.generatePlan();
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getMessage()).isEqualTo("职业规划生成成功");
+        assertThat(result.getData()).isSameAs(plan);
+        verify(careerPlanService).generatePlan();
     }
 }
