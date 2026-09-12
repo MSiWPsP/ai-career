@@ -48,7 +48,7 @@ export const useCareerChatStore = defineStore('careerChat', () => {
   watch(draft, (value) => {
     if (value) localStorage.setItem(draftStorageKey, value)
     else localStorage.removeItem(draftStorageKey)
-  })
+  }, { flush: 'sync' })
 
   function openConversation(nextConversationId: string, history: CareerChatHistoryMessage[] = []) {
     persistDraft(draftStorageKey, draft.value)
@@ -134,6 +134,12 @@ export const useCareerChatStore = defineStore('careerChat', () => {
     sending.value = false
   }
 
+  function discardNewConversationDraft() {
+    const newConversationDraftKey = buildDraftStorageKey(authStore.session?.userId, '')
+    localStorage.removeItem(newConversationDraftKey)
+    if (!conversationId.value) draft.value = ''
+  }
+
   return {
     messages,
     conversationId,
@@ -147,6 +153,7 @@ export const useCareerChatStore = defineStore('careerChat', () => {
     failSending,
     clearFailure,
     clearCurrentMessages,
+    discardNewConversationDraft,
   }
 })
 

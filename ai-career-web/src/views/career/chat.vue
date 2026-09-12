@@ -108,12 +108,10 @@ async function loadContext() {
 
 async function initializeConversations() {
   sessionsLoading.value = true
+  // 每次进入页面都从新的空白窗口开始；历史会话仅在用户从会话记录中主动选择时加载。
+  careerChatStore.openConversation('', [])
   try {
     sessions.value = await getCareerConversations(false, { silent: true })
-    const preferred = sessions.value.find((item) => item.conversationId === conversationId.value)
-    const target = preferred || sessions.value[0]
-    if (target) await openConversation(target, false)
-    else careerChatStore.openConversation('', [])
   } catch {
     ElMessage.error('聊天记录加载失败，请稍后重试')
   } finally {
@@ -168,6 +166,8 @@ async function ensureConversation() {
   const session = await createCareerConversation()
   sessions.value.unshift(session)
   careerChatStore.openConversation(session.conversationId, [])
+  // 新窗口中的文字已作为首条消息消费，不应在下次进入页面时再次成为草稿。
+  careerChatStore.discardNewConversationDraft()
   return session.conversationId
 }
 
