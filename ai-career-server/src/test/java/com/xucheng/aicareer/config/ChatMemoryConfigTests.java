@@ -32,4 +32,23 @@ class ChatMemoryConfigTests {
                 .extracting(Message::getText)
                 .containsExactly("另一位用户的问题");
     }
+
+    @Test
+    void interviewMemoryUsesAnIndependentBoundedWindow() {
+        ChatMemoryConfig config = new ChatMemoryConfig();
+        InMemoryChatMemoryRepository repository = new InMemoryChatMemoryRepository();
+        ChatMemory careerMemory = config.careerPlannerChatMemory(repository, 4);
+        ChatMemory interviewMemory = config.interviewerChatMemory(repository, 4);
+
+        careerMemory.add("career:10001", new UserMessage("职业规划问题"));
+        interviewMemory.add("interview:30001", List.of(
+                new AssistantMessage("问题一"), new UserMessage("回答一"),
+                new AssistantMessage("问题二"), new UserMessage("回答二"),
+                new AssistantMessage("问题三")));
+
+        assertThat(careerMemory.get("career:10001")).extracting(Message::getText)
+                .containsExactly("职业规划问题");
+        assertThat(interviewMemory.get("interview:30001")).extracting(Message::getText)
+                .containsExactly("回答一", "问题二", "回答二", "问题三");
+    }
 }

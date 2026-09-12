@@ -5,18 +5,15 @@ import lombok.Data;
 import tools.jackson.databind.annotation.JsonSerialize;
 import tools.jackson.databind.ser.std.ToStringSerializer;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
-public class InterviewHistoryRecordVO {
+public class InterviewStartVO {
 
     @JsonSerialize(using = ToStringSerializer.class)
-    private Long id;
-    private String targetPosition;
-    private String interviewType;
-    private String difficulty;
+    private Long interviewId;
+    private String conversationId;
     private Integer status;
-    private Integer totalScore;
-    private LocalDateTime createTime;
+    private String question;
+    private Integer questionCount;
+    private Integer maxQuestions;
 }

@@ -916,7 +916,7 @@ InterviewerAgent
   "code": 200,
   "message": "面试开始",
   "data": {
-    "interviewId": 30001,
+    "interviewId": "30001",
     "conversationId": "interview:30001",
     "status": 1,
     "question": "请介绍一下HashMap的底层数据结构。"
@@ -975,7 +975,7 @@ InterviewTurnResult
   "code": 200,
   "message": "success",
   "data": {
-    "interviewId": 30001,
+    "interviewId": "30001",
     "message": "你提到了红黑树，那么HashMap在什么情况下会进行树化？",
     "finished": false
   }
@@ -1061,16 +1061,10 @@ POST /api/interview/{id}/finish
 ```text
 更新interview状态
  ↓
-读取完整消息记录
- ↓
-生成面试报告
- ↓
-保存interview_report
- ↓
-写ability_score
- ↓
-更新user_skill
+保存结束语并记录end_time
 ```
+
+当前基础面试闭环仅完成状态和消息收口，`reportId` 返回 `null`。面试报告生成、`ability_score` 写入和 `user_skill` 更新在后续面试报告 Agent 增量中实现。
 
 ---
 
@@ -1099,17 +1093,15 @@ finishInterview()
   "code": 200,
   "message": "面试已结束",
   "data": {
-    "interviewId": 30001,
-    "reportId": 40001
+    "interviewId": "30001",
+    "reportId": null
   }
 }
 ```
 
-前端随后：
+当前前端随后展示面试已结束状态；面试报告 Agent 接入后，再根据非空 `reportId` 跳转面试报告页。
 
-```text
-跳转面试报告页
-```
+面试域使用雪花 ID，所有对外 ID 均以 JSON 字符串返回，避免超过 JavaScript 安全整数范围后发生精度丢失。
 
 ---
 
@@ -1123,7 +1115,7 @@ GET /api/interview/{id}
 
 ```json
 {
-  "id": 30001,
+  "id": "30001",
   "targetPosition": "Java后端开发工程师",
   "interviewType": "TECHNICAL",
   "difficulty": "MEDIUM",
@@ -1224,7 +1216,7 @@ GET /api/interview/history?page=1&pageSize=10
 {
   "records": [
     {
-      "id": 30001,
+      "id": "30001",
       "targetPosition": "Java后端开发工程师",
       "interviewType": "TECHNICAL",
       "difficulty": "MEDIUM",
@@ -1378,7 +1370,7 @@ GET /api/dashboard
       "completionRate": 40
     },
     "latestInterview": {
-      "id": 30001,
+      "id": "30001",
       "score": 76,
       "date": "2026-09-10"
     },

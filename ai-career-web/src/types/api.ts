@@ -164,7 +164,7 @@ export interface PageResult<T> {
 }
 
 export interface InterviewHistoryRecord {
-  id: number
+  id: string
   targetPosition: string
   interviewType: string
   difficulty: string
@@ -176,13 +176,45 @@ export interface InterviewHistoryRecord {
 export interface InterviewDetail extends InterviewHistoryRecord {
   conversationId?: string
   questionCount: number
+  maxQuestions: number
   startTime?: string
   endTime?: string
   updateTime?: string
 }
 
+export interface StartInterviewPayload {
+  targetPosition: string
+  interviewType: string
+  difficulty: string
+  maxQuestions: number
+}
+
+export interface InterviewStartResponse {
+  interviewId: string
+  conversationId: string
+  status: number
+  question: string
+  questionCount: number
+  maxQuestions: number
+}
+
+export interface InterviewTurnResponse {
+  interviewId: string
+  message: string
+  finished: boolean
+  status: number
+  questionCount: number
+  maxQuestions: number
+}
+
+export interface InterviewFinishResponse {
+  interviewId: string
+  status: number
+  reportId: string | null
+}
+
 export interface InterviewMessage {
-  id: number
+  id: string
   role: 'assistant' | 'user' | 'system'
   content: string
   questionCategory?: string
@@ -198,8 +230,8 @@ export interface InterviewSuggestion {
 }
 
 export interface InterviewReport {
-  id: number
-  interviewId: number
+  id: string
+  interviewId: string
   totalScore: number
   scores: Record<string, number>
   advantages: string[]

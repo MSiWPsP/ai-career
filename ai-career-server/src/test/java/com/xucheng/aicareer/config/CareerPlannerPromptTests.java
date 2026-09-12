@@ -27,6 +27,18 @@ class CareerPlannerPromptTests {
         assertThat(prompt).contains("不输出推理过程、Markdown 或额外说明");
     }
 
+    @Test
+    void interviewerPromptRequiresDynamicSingleQuestionAndStructuredOutput() throws IOException {
+        String prompt = readPrompt("prompts/interviewer-system.md");
+
+        assertThat(prompt)
+                .contains("一次只提出一个主要问题")
+                .contains("{interviewContext}")
+                .contains("FOLLOW_UP")
+                .contains("严格返回结构化对象")
+                .contains("不输出 Markdown");
+    }
+
     private String readPrompt(String path) throws IOException {
         return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
     }

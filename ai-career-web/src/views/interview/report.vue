@@ -31,7 +31,7 @@ const level = computed(() => {
 })
 
 onMounted(async () => {
-  const id = Number(route.params.id)
+  const id = String(route.params.id || '')
   if (!id) return
   try {
     ;[detail.value, report.value] = await Promise.all([getInterview(id), getInterviewReport(id)])

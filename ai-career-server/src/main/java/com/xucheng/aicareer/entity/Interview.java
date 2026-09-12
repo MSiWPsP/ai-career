@@ -21,6 +21,7 @@ public class Interview {
     private Integer status;
     private String conversationId;
     private Integer questionCount;
+    private Integer maxQuestions;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime createTime;

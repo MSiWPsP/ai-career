@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Microphone, Service } from '@element-plus/icons-vue'
+import { Microphone, RefreshRight, Service } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { startInterview as startInterviewRequest } from '../../api/interview'
 import { getProfile } from '../../api/profile'
 import { getSkills } from '../../api/skill'
 import type { UserProfile, UserSkill } from '../../types/api'
 
 const loading = ref(true)
+const starting = ref(false)
+const loadError = ref(false)
 const profile = ref<UserProfile>()
 const skills = ref<UserSkill[]>([])
 const config = reactive({
@@ -15,10 +19,13 @@ const config = reactive({
   difficulty: 'MEDIUM',
   maxQuestions: 5,
 })
+const router = useRouter()
 
 const strongestSkills = computed(() => [...skills.value].sort((a, b) => b.score - a.score).slice(0, 5))
 
-onMounted(async () => {
+async function loadContext() {
+  loading.value = true
+  loadError.value = false
   const [profileResult, skillResult] = await Promise.allSettled([
     getProfile({ silent: true }),
     getSkills(),
@@ -28,11 +35,25 @@ onMounted(async () => {
     config.targetPosition = profileResult.value.targetPosition || ''
   }
   if (skillResult.status === 'fulfilled') skills.value = skillResult.value
+  loadError.value = profileResult.status === 'rejected' || skillResult.status === 'rejected'
   loading.value = false
-})
+}
 
-function startInterview() {
-  ElMessage.info('模拟面试启动接口将在 Interviewer Agent 阶段接入')
+onMounted(loadContext)
+
+async function startInterview() {
+  const targetPosition = config.targetPosition.trim()
+  if (!targetPosition) {
+    ElMessage.warning('请先填写目标岗位')
+    return
+  }
+  starting.value = true
+  try {
+    const result = await startInterviewRequest({ ...config, targetPosition })
+    await router.push({ name: 'interview-session', params: { id: result.interviewId } })
+  } finally {
+    starting.value = false
+  }
 }
 </script>
 
@@ -44,14 +65,19 @@ function startInterview() {
         <h1>准备一次模拟面试</h1>
         <p>选择岗位、类型和难度，进行一场贴近真实招聘过程的练习。</p>
       </div>
-      <span class="developing-tag">AI 接口待接入</span>
+      <span class="ready-tag">个性化动态提问</span>
     </header>
+
+    <el-alert v-if="loadError" class="context-alert" type="warning" :closable="false" show-icon>
+      <template #title>部分职业画像加载失败，建议刷新后再开始面试</template>
+      <el-button link type="warning" :icon="RefreshRight" @click="loadContext">重新加载</el-button>
+    </el-alert>
 
     <section class="setup-grid">
       <article class="surface-card config-card">
         <div class="config-head">
           <el-icon class="interviewer-avatar"><Service /></el-icon>
-          <div><h2>AI 模拟面试</h2><p>本次面试过程不会实时展示评分，完成后统一生成复盘报告。</p></div>
+          <div><h2>AI 模拟面试</h2><p>面试过程中不会实时展示评分，问题会根据你的回答动态调整。</p></div>
         </div>
 
         <el-form :model="config" label-position="top" size="large">
@@ -78,7 +104,7 @@ function startInterview() {
 
           <div class="start-area">
             <p>预计用时 {{ config.maxQuestions * 2 }}～{{ config.maxQuestions * 3 }} 分钟</p>
-            <el-button type="primary" size="large" :icon="Microphone" @click="startInterview">开始模拟面试</el-button>
+            <el-button type="primary" size="large" :icon="Microphone" :loading="starting" :disabled="loading" @click="startInterview">开始模拟面试</el-button>
           </div>
         </el-form>
       </article>
@@ -109,7 +135,8 @@ function startInterview() {
 </template>
 
 <style scoped>
-.developing-tag { padding: 8px 13px; border-radius: 999px; color: var(--warning); background: var(--warning-soft); font-size: 12px; font-weight: 700; }
+.ready-tag { padding: 8px 13px; border-radius: 999px; color: var(--primary); background: var(--primary-soft); font-size: 12px; font-weight: 700; }
+.context-alert { margin-bottom: 18px; }
 .setup-grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 20px; }
 .config-card { padding: 28px 32px; }
 .config-head { display: flex; gap: 15px; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }

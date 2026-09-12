@@ -143,6 +143,7 @@ class InterviewAbilityBusinessIntegrationTests {
         interview.setDifficulty("MEDIUM");
         interview.setStatus(status);
         interview.setQuestionCount(2);
+        interview.setMaxQuestions(10);
         interview.setStartTime(createTime);
         interview.setEndTime(createTime.plusHours(1));
         interview.setCreateTime(createTime);

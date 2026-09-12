@@ -658,6 +658,7 @@ interview
 | status | TINYINT | 面试状态 |
 | conversation_id | VARCHAR(100) | AI 会话 ID |
 | question_count | INT | 已提问数量 |
+| max_questions | INT | 本场面试最大问题数量，默认 10 |
 | start_time | DATETIME | 开始时间 |
 | end_time | DATETIME | 结束时间 |
 | create_time | DATETIME | 创建时间 |

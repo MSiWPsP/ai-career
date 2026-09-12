@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * AI 对话客户端配置。
  *
- * <p>普通聊天和结构化规划使用独立的 ChatClient，避免聊天记忆及输出约束相互污染。</p>
+ * <p>职业聊天、结构化规划和模拟面试使用独立的 ChatClient，避免记忆及输出约束相互污染。</p>
  */
 @Configuration
 public class AiConfig {
@@ -42,6 +42,18 @@ public class AiConfig {
             @Value("classpath:prompts/career-plan-generation-system.md") Resource systemPrompt) throws IOException {
         return builder.clone()
                 .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
+                .build();
+    }
+
+    /** 创建带独立会话记忆和面试规则的 InterviewerAgent 客户端。 */
+    @Bean
+    public ChatClient interviewerChatClient(
+            ChatClient.Builder builder,
+            @Qualifier("interviewerChatMemoryAdvisor") MessageChatMemoryAdvisor interviewerChatMemoryAdvisor,
+            @Value("classpath:prompts/interviewer-system.md") Resource systemPrompt) throws IOException {
+        return builder.clone()
+                .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
+                .defaultAdvisors(interviewerChatMemoryAdvisor)
                 .build();
     }
 }
