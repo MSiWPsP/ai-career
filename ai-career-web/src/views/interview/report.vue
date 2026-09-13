@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ChatDotRound, CircleCheck, MagicStick, Warning } from '@element-plus/icons-vue'
+import { ChatDotRound, CircleCheck, MagicStick, RefreshRight, Warning } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { getInterview, getInterviewReport } from '../../api/interview'
+import { generateInterviewReport, getInterview, getInterviewReport } from '../../api/interview'
 import AbilityRadar from '../../components/AbilityRadar.vue'
 import type { AbilityRadar as AbilityRadarData, InterviewDetail, InterviewReport } from '../../types/api'
 import { difficultyLabel, formatDate, interviewTypeLabel } from '../../utils/data'
@@ -12,6 +13,8 @@ const router = useRouter()
 const loading = ref(true)
 const detail = ref<InterviewDetail>()
 const report = ref<InterviewReport>()
+const loadError = ref(false)
+const generating = ref(false)
 
 const radar = computed<AbilityRadarData>(() => {
   const scores = report.value?.scores || {}
@@ -30,15 +33,39 @@ const level = computed(() => {
   return '建议系统复习'
 })
 
-onMounted(async () => {
+async function loadReport() {
   const id = String(route.params.id || '')
   if (!id) return
+  loading.value = true
+  loadError.value = false
   try {
-    ;[detail.value, report.value] = await Promise.all([getInterview(id), getInterviewReport(id)])
+    detail.value = await getInterview(id)
+    try {
+      report.value = await getInterviewReport(id, { silent: true })
+    } catch {
+      // 已结束但报告尚未生成时保留详情，供用户显式重试。
+      report.value = undefined
+    }
+  } catch {
+    loadError.value = true
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadReport)
+
+async function createReport() {
+  const id = String(route.params.id || '')
+  if (!id || generating.value) return
+  generating.value = true
+  try {
+    report.value = await generateInterviewReport(id)
+    ElMessage.success('面试报告已生成')
+  } finally {
+    generating.value = false
+  }
+}
 </script>
 
 <template>
@@ -51,6 +78,10 @@ onMounted(async () => {
       </div>
       <el-button @click="router.push('/interviews')">返回面试记录</el-button>
     </header>
+
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon title="面试详情加载失败">
+      <el-button link type="danger" :icon="RefreshRight" @click="loadReport">重新加载</el-button>
+    </el-alert>
 
     <template v-if="report">
       <section class="surface-card report-hero">
@@ -112,8 +143,8 @@ onMounted(async () => {
       </section>
     </template>
 
-    <section v-else-if="!loading" class="surface-card empty-panel report-empty">
-      <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>面试报告尚未生成</strong><p>面试结束与报告生成接口完成后，完整分析会展示在这里。</p></div>
+    <section v-else-if="!loading && !loadError" class="surface-card empty-panel report-empty">
+      <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>面试报告尚未生成</strong><p>面试记录已保存。报告生成失败或尚未执行时，可在这里重试；未回答任何题目无法生成报告。</p><el-button type="primary" :loading="generating" :disabled="detail?.status !== 2 && detail?.status !== 3" @click="createReport">生成面试报告</el-button></div>
     </section>
   </div>
 </template>

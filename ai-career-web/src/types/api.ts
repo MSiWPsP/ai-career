@@ -205,6 +205,7 @@ export interface InterviewTurnResponse {
   status: number
   questionCount: number
   maxQuestions: number
+  reportId: string | null
 }
 
 export interface InterviewFinishResponse {

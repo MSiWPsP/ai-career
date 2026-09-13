@@ -20,6 +20,8 @@ public class InterviewMessage {
     private String content;
     private String questionCategory;
     private String questionLevel;
+    private Integer score;
+    private String evaluation;
     private Integer messageOrder;
     private LocalDateTime createTime;
 }

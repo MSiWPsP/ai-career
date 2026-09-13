@@ -13,6 +13,7 @@ import com.xucheng.aicareer.mapper.InterviewMapper;
 import com.xucheng.aicareer.mapper.InterviewMessageMapper;
 import com.xucheng.aicareer.mapper.InterviewReportMapper;
 import com.xucheng.aicareer.service.InterviewService;
+import com.xucheng.aicareer.service.InterviewReportService;
 import com.xucheng.aicareer.service.UserProfileService;
 import com.xucheng.aicareer.service.UserSkillService;
 import com.xucheng.aicareer.service.model.InterviewBusinessContext;
@@ -35,6 +36,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -48,6 +50,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @Service
+@Slf4j
 public class InterviewServiceImpl implements InterviewService {
 
     private static final int STATUS_NOT_STARTED = 0;
@@ -74,6 +77,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final UserProfileService userProfileService;
     private final UserSkillService userSkillService;
     private final InterviewerAgent interviewerAgent;
+    private final InterviewReportService reportService;
     private final ChatMemory interviewerChatMemory;
     private final TransactionTemplate transactionTemplate;
     private final int memoryMessageLimit;
@@ -87,6 +91,7 @@ public class InterviewServiceImpl implements InterviewService {
             UserProfileService userProfileService,
             UserSkillService userSkillService,
             InterviewerAgent interviewerAgent,
+            InterviewReportService reportService,
             @Qualifier("interviewerChatMemory") ChatMemory interviewerChatMemory,
             TransactionTemplate transactionTemplate,
             @Value("${ai.chat-memory.interview.max-messages:30}") int memoryMessageLimit) {
@@ -97,6 +102,7 @@ public class InterviewServiceImpl implements InterviewService {
         this.userProfileService = userProfileService;
         this.userSkillService = userSkillService;
         this.interviewerAgent = interviewerAgent;
+        this.reportService = reportService;
         this.interviewerChatMemory = interviewerChatMemory;
         this.transactionTemplate = transactionTemplate;
         this.memoryMessageLimit = memoryMessageLimit;
@@ -157,6 +163,15 @@ public class InterviewServiceImpl implements InterviewService {
                 if (response == null) {
                     throw new BusinessException(500, "保存面试回答失败，请稍后重试");
                 }
+                if (Boolean.TRUE.equals(response.getFinished())) {
+                    try {
+                        response.setReportId(reportService.generateReport(interviewId).getId());
+                    } catch (RuntimeException reportError) {
+                        // 面试已完成，报告失败不回滚回答；用户可在报告页单独重试。
+                        log.warn("面试已结束但报告生成失败 interviewId={} reason={}",
+                                interviewId, reportError.getClass().getSimpleName());
+                    }
+                }
                 return response;
             } catch (RuntimeException exception) {
                 // AI 或最终落库失败时撤销本轮孤立回答，使用户可原样重试且消息顺序保持连续。
@@ -173,7 +188,9 @@ public class InterviewServiceImpl implements InterviewService {
             Long userId = UserContext.getUserId();
             Interview interview = getRequiredInterview(userId, interviewId);
             if (interview.getStatus() == STATUS_COMPLETED || interview.getStatus() == STATUS_TERMINATED) {
-                return toFinishVO(interview);
+                InterviewFinishVO response = toFinishVO(interview);
+                attachReportIfPossible(interviewId, response);
+                return response;
             }
             if (interview.getStatus() != STATUS_IN_PROGRESS) {
                 throw new BusinessException(409, "当前面试无法结束");
@@ -189,8 +206,14 @@ public class InterviewServiceImpl implements InterviewService {
                 return toFinishVO(interview);
             });
             interviewerChatMemory.clear(interview.getConversationId());
+            attachReportIfPossible(interviewId, result);
             return result;
         }
+    }
+
+    @Override
+    public InterviewReportVO generateReport(Long interviewId) {
+        return reportService.generateReport(interviewId);
     }
 
     @Override
@@ -388,8 +411,11 @@ public class InterviewServiceImpl implements InterviewService {
             Interview interview, InterviewTurnResult result, boolean forceFinish) {
         boolean finished = forceFinish || Boolean.TRUE.equals(result.getFinished());
         int nextOrder = nextMessageOrder(interview.getId());
-        saveMessage(interview, ROLE_ASSISTANT, result.getResponse().trim(), result.getTopic().trim(),
-                result.getNextDifficulty(), nextOrder);
+        InterviewMessage assessment = saveMessage(interview, ROLE_ASSISTANT, result.getResponse().trim(),
+                result.getTopic().trim(), result.getNextDifficulty(), nextOrder);
+        assessment.setScore(result.getScore());
+        assessment.setEvaluation(result.getEvaluation().trim());
+        interviewMessageMapper.updateById(assessment);
         interview.setDifficulty(result.getNextDifficulty());
         if (finished) {
             interview.setStatus(STATUS_COMPLETED);
@@ -509,6 +535,16 @@ public class InterviewServiceImpl implements InterviewService {
                 .status(interview.getStatus())
                 .reportId(null)
                 .build();
+    }
+
+    private void attachReportIfPossible(Long interviewId, InterviewFinishVO response) {
+        try {
+            response.setReportId(reportService.generateReport(interviewId).getId());
+        } catch (RuntimeException reportError) {
+            // 不影响面试结束状态；显式重试接口会保留原始面试记录作为事实来源。
+            log.warn("面试已结束但报告生成失败 interviewId={} reason={}",
+                    interviewId, reportError.getClass().getSimpleName());
+        }
     }
 
     private Object lockFor(Long interviewId) {

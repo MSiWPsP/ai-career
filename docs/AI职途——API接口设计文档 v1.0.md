@@ -1062,9 +1062,11 @@ POST /api/interview/{id}/finish
 更新interview状态
  ↓
 保存结束语并记录end_time
+ ↓
+依据完整面试记录生成并保存结构化报告
 ```
 
-当前基础面试闭环仅完成状态和消息收口，`reportId` 返回 `null`。面试报告生成、`ability_score` 写入和 `user_skill` 更新在后续面试报告 Agent 增量中实现。
+至少回答过一道题时自动生成报告；模型失败不回滚已结束的面试，`reportId` 返回 `null`，用户可通过 `POST /api/interview/{id}/report/generate` 重试。未回答任何题目时不生成报告。能力回写与动态重新规划由下一业务增量实现。
 
 ---
 
@@ -1094,12 +1096,12 @@ finishInterview()
   "message": "面试已结束",
   "data": {
     "interviewId": "30001",
-    "reportId": null
+    "reportId": "40001"
   }
 }
 ```
 
-当前前端随后展示面试已结束状态；面试报告 Agent 接入后，再根据非空 `reportId` 跳转面试报告页。
+前端随后进入面试报告页；报告暂不可用时提供显式重试入口。自动结束的回答接口同样返回可空的 `reportId`。
 
 面试域使用雪花 ID，所有对外 ID 均以 JSON 字符串返回，避免超过 JavaScript 安全整数范围后发生精度丢失。
 
@@ -1158,6 +1160,14 @@ GET /api/interview/{id}/messages
 ```http
 GET /api/interview/{id}/report
 ```
+
+已结束面试的报告生成或失败重试：
+
+```http
+POST /api/interview/{id}/report/generate
+```
+
+已有报告时直接返回原报告，不重复调用模型或插入数据；未结束面试和没有任何候选人回答的面试拒绝生成。
 
 返回：
 

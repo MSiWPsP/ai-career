@@ -76,7 +76,7 @@ function statusInfo(status: number) {
           <div class="item-score"><strong>{{ item.totalScore ?? '—' }}</strong><span>综合评分</span></div>
           <div class="item-actions">
             <el-button @click="router.push('/interview/session/' + item.id)">查看记录</el-button>
-            <el-button type="primary" plain :disabled="item.totalScore == null" @click="router.push('/interview/' + item.id + '/report')">查看报告</el-button>
+            <el-button type="primary" plain :disabled="item.status !== 2 && item.status !== 3" @click="router.push('/interview/' + item.id + '/report')">{{ item.totalScore == null ? '生成报告' : '查看报告' }}</el-button>
           </div>
         </article>
       </template>

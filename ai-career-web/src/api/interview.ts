@@ -18,7 +18,7 @@ export const startInterview = (payload: StartInterviewPayload) =>
 export const answerInterview = (id: string, answer: string) =>
   request.post<InterviewTurnResponse>(`/interview/${id}/answer`, { answer }, aiRequestConfig)
 export const finishInterview = (id: string) =>
-  request.post<InterviewFinishResponse>(`/interview/${id}/finish`)
+  request.post<InterviewFinishResponse>(`/interview/${id}/finish`, undefined, aiRequestConfig)
 
 export const getInterviewHistory = (page = 1, pageSize = 10, config?: RequestConfig) =>
   request.get<PageResult<InterviewHistoryRecord>>('/interview/history', {
@@ -28,5 +28,7 @@ export const getInterviewHistory = (page = 1, pageSize = 10, config?: RequestCon
 export const getInterview = (id: string) => request.get<InterviewDetail>(`/interview/${id}`)
 export const getInterviewMessages = (id: string) =>
   request.get<InterviewMessage[]>(`/interview/${id}/messages`)
-export const getInterviewReport = (id: string) =>
-  request.get<InterviewReport>(`/interview/${id}/report`)
+export const getInterviewReport = (id: string, config?: RequestConfig) =>
+  request.get<InterviewReport>(`/interview/${id}/report`, config)
+export const generateInterviewReport = (id: string) =>
+  request.post<InterviewReport>(`/interview/${id}/report/generate`, undefined, aiRequestConfig)

@@ -63,7 +63,10 @@ async function submitAnswer() {
     const result = await answerInterview(interviewId.value, content)
     answer.value = ''
     await loadInterview()
-    if (result.finished) ElMessage.success('本次模拟面试已完成，完整记录已保存')
+    if (result.finished) {
+      ElMessage.success(result.reportId ? '面试报告已生成' : '面试已完成，可在报告页重试生成报告')
+      await router.push(`/interview/${interviewId.value}/report`)
+    }
   } finally {
     pendingAnswer.value = ''
     submitting.value = false
@@ -83,9 +86,10 @@ async function endInterview() {
   }
   finishing.value = true
   try {
-    await finishInterview(interviewId.value)
+    const result = await finishInterview(interviewId.value)
     await loadInterview()
-    ElMessage.success('面试已结束，完整记录已保存')
+    ElMessage.success(result.reportId ? '面试报告已生成' : '面试已结束，可在报告页生成报告')
+    await router.push(`/interview/${interviewId.value}/report`)
   } finally {
     finishing.value = false
   }
@@ -131,9 +135,9 @@ async function scrollToBottom() {
     <footer class="answer-box">
       <el-input v-model="answer" type="textarea" :rows="3" resize="none" :disabled="!isActive || submitting" :placeholder="isActive ? '请输入你的回答……' : '本次面试已结束'" @keydown.ctrl.enter.prevent="submitAnswer" />
       <div>
-        <small>{{ isActive ? 'Ctrl + Enter 提交 · 面试过程中不会显示单题评分' : '完整面试记录已保存，报告与能力回写将在后续开放' }}</small>
+        <small>{{ isActive ? 'Ctrl + Enter 提交 · 面试过程中不会显示单题评分' : '完整面试记录已保存，可查看或生成面试报告' }}</small>
         <el-button v-if="isActive" type="primary" :loading="submitting" @click="submitAnswer">提交回答</el-button>
-        <el-button v-else type="primary" plain @click="router.push({ name: 'interview-setup' })">开始新面试</el-button>
+        <el-button v-else type="primary" plain @click="router.push(`/interview/${interviewId}/report`)">查看报告</el-button>
       </div>
     </footer>
   </section>

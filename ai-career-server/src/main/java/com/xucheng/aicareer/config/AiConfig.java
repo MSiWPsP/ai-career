@@ -56,4 +56,14 @@ public class AiConfig {
                 .defaultAdvisors(interviewerChatMemoryAdvisor)
                 .build();
     }
+
+    /** 报告生成不接入实时面试记忆，始终依据数据库恢复的完整记录评估。 */
+    @Bean
+    public ChatClient interviewReportChatClient(
+            ChatClient.Builder builder,
+            @Value("classpath:prompts/interview-report-system.md") Resource systemPrompt) throws IOException {
+        return builder.clone()
+                .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
+                .build();
+    }
 }

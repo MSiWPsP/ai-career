@@ -25,6 +25,9 @@ public interface InterviewService {
     /** 由用户主动结束进行中的面试；本阶段不生成面试报告。 */
     InterviewFinishVO finishInterview(Long interviewId);
 
+    /** 对已结束面试生成或复用报告，供自动生成失败后的显式重试。 */
+    InterviewReportVO generateReport(Long interviewId);
+
     InterviewVO getInterviewById(Long interviewId);
 
     List<InterviewMessageVO> getInterviewMessages(Long interviewId);

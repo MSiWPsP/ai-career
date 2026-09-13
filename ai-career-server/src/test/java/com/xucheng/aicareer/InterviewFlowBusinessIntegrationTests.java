@@ -2,17 +2,21 @@ package com.xucheng.aicareer;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xucheng.aicareer.agent.interview.InterviewerAgent;
+import com.xucheng.aicareer.agent.interview.InterviewReportAgent;
+import com.xucheng.aicareer.agent.interview.dto.InterviewReportResult;
 import com.xucheng.aicareer.agent.interview.dto.InterviewTurnResult;
 import com.xucheng.aicareer.dto.InterviewAnswerDTO;
 import com.xucheng.aicareer.dto.RegisterDTO;
 import com.xucheng.aicareer.dto.StartInterviewDTO;
 import com.xucheng.aicareer.entity.Interview;
 import com.xucheng.aicareer.entity.InterviewMessage;
+import com.xucheng.aicareer.entity.InterviewReport;
 import com.xucheng.aicareer.entity.User;
 import com.xucheng.aicareer.entity.UserProfile;
 import com.xucheng.aicareer.entity.UserSkill;
 import com.xucheng.aicareer.mapper.InterviewMapper;
 import com.xucheng.aicareer.mapper.InterviewMessageMapper;
+import com.xucheng.aicareer.mapper.InterviewReportMapper;
 import com.xucheng.aicareer.mapper.UserMapper;
 import com.xucheng.aicareer.mapper.UserProfileMapper;
 import com.xucheng.aicareer.mapper.UserSkillMapper;
@@ -36,6 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @SpringBootTest
 @Transactional
@@ -49,10 +55,14 @@ class InterviewFlowBusinessIntegrationTests {
     private final UserSkillMapper userSkillMapper;
     private final InterviewMapper interviewMapper;
     private final InterviewMessageMapper interviewMessageMapper;
+    private final InterviewReportMapper interviewReportMapper;
     private final InterviewService interviewService;
 
     @MockitoBean
     private InterviewerAgent interviewerAgent;
+
+    @MockitoBean
+    private InterviewReportAgent reportAgent;
 
     @AfterEach
     void clearUserContext() {
@@ -67,6 +77,7 @@ class InterviewFlowBusinessIntegrationTests {
                 "请介绍一下Spring Boot自动配置原理。", false, "NEXT_TOPIC"));
         when(interviewerAgent.answer(eq(userId), any(), any(), any(), eq(true))).thenReturn(turn(
                 "本次面试到这里，感谢你的回答。", true, "FINISH"));
+        when(reportAgent.generate(eq(userId), any())).thenReturn(report());
 
         InterviewStartVO started = interviewService.startInterview(startRequest(1));
         InterviewTurnVO finished = interviewService.answerInterview(
@@ -81,11 +92,19 @@ class InterviewFlowBusinessIntegrationTests {
         assertThat(started.getQuestionCount()).isEqualTo(1);
         assertThat(finished.getFinished()).isTrue();
         assertThat(finished.getQuestionCount()).isEqualTo(1);
+        assertThat(finished.getReportId()).isNotNull();
         assertThat(interview.getStatus()).isEqualTo(2);
         assertThat(interview.getEndTime()).isNotNull();
         assertThat(messages).extracting(InterviewMessage::getRole)
                 .containsExactly("assistant", "user", "assistant");
         assertThat(messages).extracting(InterviewMessage::getMessageOrder).containsExactly(1, 2, 3);
+        assertThat(messages.getLast().getScore()).isEqualTo(82);
+        assertThat(messages.getLast().getEvaluation()).isEqualTo("回答较完整");
+        assertThat(interviewReportMapper.selectCount(Wrappers.<InterviewReport>lambdaQuery()
+                .eq(InterviewReport::getInterviewId, interview.getId()))).isEqualTo(1);
+        assertThat(interviewService.generateReport(interview.getId()).getId()).isEqualTo(finished.getReportId());
+        assertThat(interviewReportMapper.selectCount(Wrappers.<InterviewReport>lambdaQuery()
+                .eq(InterviewReport::getInterviewId, interview.getId()))).isEqualTo(1);
     }
 
     @Test
@@ -132,6 +151,30 @@ class InterviewFlowBusinessIntegrationTests {
                         .orderByAsc(InterviewMessage::getMessageOrder)))
                 .extracting(InterviewMessage::getMessageOrder)
                 .containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void failedReportCanBeRetriedWithoutRepeatingTheInterviewTurn() {
+        Long userId = createUserWithContext();
+        UserContext.setUserId(userId);
+        when(interviewerAgent.start(eq(userId), any(), any())).thenReturn(turn(
+                "请简述索引的作用。", false, "NEXT_TOPIC"));
+        when(interviewerAgent.answer(eq(userId), any(), any(), any(), eq(true))).thenReturn(turn(
+                "本次面试结束。", true, "FINISH"));
+        when(reportAgent.generate(eq(userId), any()))
+                .thenThrow(new IllegalStateException("模型暂不可用"))
+                .thenReturn(report());
+
+        InterviewStartVO started = interviewService.startInterview(startRequest(1));
+        InterviewTurnVO turn = interviewService.answerInterview(started.getInterviewId(), answer("索引可以加速查询。"));
+        assertThat(turn.getFinished()).isTrue();
+        assertThat(turn.getReportId()).isNull();
+        assertThat(interviewMapper.selectById(started.getInterviewId()).getStatus()).isEqualTo(2);
+
+        assertThat(interviewService.generateReport(started.getInterviewId()).getTotalScore()).isEqualTo(82);
+        assertThat(interviewMessageMapper.selectCount(Wrappers.<InterviewMessage>lambdaQuery()
+                .eq(InterviewMessage::getInterviewId, started.getInterviewId()))).isEqualTo(3);
+        verify(reportAgent, times(2)).generate(eq(userId), any());
     }
 
     private Long createUserWithContext() {
@@ -183,6 +226,18 @@ class InterviewFlowBusinessIntegrationTests {
         result.setNextAction(action);
         result.setNextDifficulty("MEDIUM");
         result.setFinished(finished);
+        return result;
+    }
+
+    private InterviewReportResult report() {
+        InterviewReportResult result = new InterviewReportResult();
+        result.setTotalScore(82);
+        result.setScores(java.util.Map.of("Spring Boot", 82));
+        result.setAdvantages(List.of("条件装配思路清晰"));
+        result.setWeaknesses(List.of("缺少边界场景说明"));
+        result.setSuggestions(List.of(com.xucheng.aicareer.vo.InterviewSuggestionVO.builder()
+                .topic("Spring Boot").priority("MEDIUM").content("补充自动配置加载过程").build()));
+        result.setSummary("本次回答有一定基础，建议继续练习。");
         return result;
     }
 }

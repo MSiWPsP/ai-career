@@ -784,6 +784,8 @@ ChatMemory 可以负责短期上下文。
 | content | TEXT | 消息内容 |
 | question_category | VARCHAR(100) | 问题分类 |
 | question_level | VARCHAR(50) | 当前问题难度 |
+| score | INT | 本轮回答的内部评分，仅供报告生成，不向候选人展示 |
+| evaluation | TEXT | 本轮回答的内部评价，仅供报告生成，不向候选人展示 |
 | message_order | INT | 消息顺序 |
 | create_time | DATETIME | 创建时间 |
 

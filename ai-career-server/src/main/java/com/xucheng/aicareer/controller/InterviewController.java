@@ -60,6 +60,12 @@ public class InterviewController {
         return Result.success("面试已结束", interviewService.finishInterview(id));
     }
 
+    @PostMapping("/{id}/report/generate")
+    @Operation(summary = "生成或重试面试报告", description = "面试结束后可重试；已有报告时直接返回，不重复生成")
+    public Result<InterviewReportVO> generateReport(@PathVariable Long id) {
+        return Result.success("面试报告已生成", interviewService.generateReport(id));
+    }
+
     @GetMapping("/history")
     @Operation(summary = "分页获取历史面试")
     public Result<PageResultVO<InterviewHistoryRecordVO>> getInterviewHistory(

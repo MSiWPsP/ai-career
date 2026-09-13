@@ -16,4 +16,6 @@ public class InterviewTurnVO {
     private Integer status;
     private Integer questionCount;
     private Integer maxQuestions;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long reportId;
 }
