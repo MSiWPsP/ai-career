@@ -985,6 +985,8 @@ Redis
 | source_id | BIGINT | 来源业务 ID |
 | create_time | DATETIME | 创建时间 |
 
+面试报告生成时，为每个分项能力新增一条 `source_type=INTERVIEW`、`source_id=interview_id` 的历史记录。已存在评分采用旧分数 60% 与本次面试 40% 加权；同一面试只写回一次。能明确匹配的 `user_skill` 同步更新加权分数与等级，未考查技能保持原值。
+
 ---
 
 # 三十四、source_type
@@ -1472,7 +1474,11 @@ INDEX(user_id)
 INDEX(user_id, ability_name)
 
 INDEX(user_id, create_time)
+
+UNIQUE INDEX(source_type, source_id, ability_name)
 ```
+
+`career_plan` 增加唯一约束 `(user_id, version)` 与 `(user_id, source_interview_id)`；首版规划的 `source_interview_id` 为 `NULL`。以上约束由 `V6__interview_writeback_and_plan_uniqueness.sql` 添加。
 
 ---
 

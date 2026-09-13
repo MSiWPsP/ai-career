@@ -7,6 +7,9 @@ import com.xucheng.aicareer.exception.AiServiceException;
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.vo.UserProfileVO;
 import com.xucheng.aicareer.vo.UserSkillVO;
+import com.xucheng.aicareer.vo.CareerPlanVO;
+import com.xucheng.aicareer.vo.CareerTaskVO;
+import com.xucheng.aicareer.vo.InterviewReportVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -126,9 +129,29 @@ public class CareerPlannerAgent {
      */
     public CareerPlanResult generatePlan(
             Long userId, UserProfileVO profile, List<UserSkillVO> skills) {
+        return callStructuredPlan(userId, buildGenerationPrompt(profile, skills));
+    }
+
+    /** 模型只消费业务层整理的旧规划、任务进度与报告，不读取数据库。 */
+    public CareerPlanResult regeneratePlan(Long userId, UserProfileVO profile, List<UserSkillVO> skills,
+                                           CareerPlanVO previousPlan, List<CareerTaskVO> previousTasks,
+                                           InterviewReportVO report) {
+        try {
+            String prompt = "请依据指定面试报告生成下一版职业规划，保留有依据的旧目标，并调整尚未完成的成长任务。"
+                    + "以下数据由平台业务服务读取：\n<user_data>\n"
+                    + objectMapper.writeValueAsString(new ReplanningInput(profile, skills,
+                            previousPlan, previousTasks, report)) + "\n</user_data>";
+            return callStructuredPlan(userId, prompt);
+        } catch (AiServiceException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new AiServiceException("重新规划输入数据处理失败", exception);
+        }
+    }
+
+    private CareerPlanResult callStructuredPlan(Long userId, String userPrompt) {
         long startTime = System.currentTimeMillis();
         RuntimeException lastFailure = null;
-        String userPrompt = buildGenerationPrompt(profile, skills);
 
         for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
             try {
@@ -230,6 +253,11 @@ public class CareerPlannerAgent {
     }
 
     private record CareerPlanningInput(UserProfileVO profile, List<UserSkillVO> skills) {
+    }
+
+    private record ReplanningInput(UserProfileVO profile, List<UserSkillVO> skills,
+                                   CareerPlanVO previousPlan, List<CareerTaskVO> previousTasks,
+                                   InterviewReportVO interviewReport) {
     }
 
     private AiServiceException mapStreamException(

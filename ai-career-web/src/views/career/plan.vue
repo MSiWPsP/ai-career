@@ -13,25 +13,35 @@ const loading = ref(true)
 const plan = ref<CareerPlan>()
 const history = ref<CareerPlan[]>([])
 const generating = ref(false)
+const loadError = ref(false)
 
 const advantages = computed(() => parseJsonField<string[]>(plan.value?.advantages, []))
 const weaknesses = computed(() => parseJsonField<string[]>(plan.value?.weaknesses, []))
 const roadmap = computed(() => parseJsonField<RoadmapStage[]>(plan.value?.roadmap, []))
 
-onMounted(async () => {
+onMounted(loadPlans)
+
+async function loadPlans() {
+  loading.value = true
+  loadError.value = false
   const [currentResult, historyResult] = await Promise.allSettled([
     getCurrentPlan({ silent: true }),
     getPlanHistory({ silent: true }),
   ])
   if (currentResult.status === 'fulfilled') plan.value = currentResult.value
   if (historyResult.status === 'fulfilled') history.value = historyResult.value
+  if (currentResult.status === 'rejected' && historyResult.status === 'rejected') {
+    loadError.value = true
+  }
   loading.value = false
-})
+}
 
-async function switchPlan(id: number) {
+async function switchPlan(id: string) {
   loading.value = true
   try {
     plan.value = await getPlanById(id)
+  } catch {
+    // 请求层已提示错误，当前版本保持不变。
   } finally {
     loading.value = false
   }
@@ -45,6 +55,8 @@ async function generateFirstPlan() {
     plan.value = generatedPlan
     history.value = [generatedPlan]
     ElMessage.success('职业规划生成成功')
+  } catch {
+    // 保留空状态，允许用户调整画像或稍后重试。
   } finally {
     generating.value = false
   }
@@ -61,12 +73,16 @@ async function generateFirstPlan() {
       </div>
       <div class="plan-actions">
         <el-button @click="router.push('/career/chat')">与 AI 讨论规划</el-button>
-        <el-button v-if="plan" type="primary" disabled>重新生成规划 · 待接入</el-button>
+        <el-button v-if="plan" type="primary" @click="router.push('/interviews')">根据面试反馈重新规划</el-button>
         <el-button v-else type="primary" :loading="generating" @click="generateFirstPlan">生成职业规划</el-button>
       </div>
     </header>
 
-    <template v-if="plan">
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon title="职业规划加载失败" class="load-alert">
+      <el-button link type="danger" @click="loadPlans">重新加载</el-button>
+    </el-alert>
+
+    <template v-if="plan && !loadError">
       <section class="plan-hero surface-card">
         <div>
           <span class="soft-label">规划 V{{ plan.version }} {{ plan.status === 1 ? '· 当前' : '· 历史' }}</span>
@@ -123,7 +139,7 @@ async function generateFirstPlan() {
       </section>
     </template>
 
-    <section v-else class="surface-card empty-panel plan-empty">
+    <section v-else-if="!loadError" class="surface-card empty-panel plan-empty">
       <div>
         <el-icon class="empty-icon"><TrendCharts /></el-icon>
         <strong>你的第一份职业规划还未生成</strong>
@@ -139,6 +155,7 @@ async function generateFirstPlan() {
 
 <style scoped>
 .plan-actions { display: flex; gap: 10px; }
+.load-alert { margin-bottom: 20px; }
 .plan-hero {
   display: flex;
   align-items: center;

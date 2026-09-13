@@ -7,10 +7,13 @@ import com.xucheng.aicareer.agent.career.dto.CareerTaskResult;
 import com.xucheng.aicareer.agent.career.dto.RoadmapStage;
 import com.xucheng.aicareer.entity.CareerPlan;
 import com.xucheng.aicareer.entity.CareerTask;
+import com.xucheng.aicareer.dto.CareerPlanRegenerateDTO;
 import com.xucheng.aicareer.exception.BusinessException;
 import com.xucheng.aicareer.mapper.CareerPlanMapper;
 import com.xucheng.aicareer.mapper.CareerTaskMapper;
 import com.xucheng.aicareer.service.CareerPlanService;
+import com.xucheng.aicareer.service.CareerTaskService;
+import com.xucheng.aicareer.service.InterviewReportService;
 import com.xucheng.aicareer.service.UserProfileService;
 import com.xucheng.aicareer.service.UserSkillService;
 import com.xucheng.aicareer.utils.UserContext;
@@ -19,6 +22,8 @@ import com.xucheng.aicareer.vo.CareerRoadmapStageVO;
 import com.xucheng.aicareer.vo.ProfileCompletionVO;
 import com.xucheng.aicareer.vo.UserProfileVO;
 import com.xucheng.aicareer.vo.UserSkillVO;
+import com.xucheng.aicareer.vo.CareerTaskVO;
+import com.xucheng.aicareer.vo.InterviewReportVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -39,6 +44,7 @@ import java.util.function.Supplier;
 public class CareerPlanServiceImpl implements CareerPlanService {
 
     private static final int CURRENT_STATUS = 1;
+    private static final int HISTORICAL_STATUS = 0;
     private static final int INITIAL_VERSION = 1;
     private static final int TASK_STATUS_WAITING = 0;
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
@@ -51,6 +57,8 @@ public class CareerPlanServiceImpl implements CareerPlanService {
     private final UserProfileService userProfileService;
     private final UserSkillService userSkillService;
     private final CareerPlannerAgent careerPlannerAgent;
+    private final CareerTaskService careerTaskService;
+    private final InterviewReportService interviewReportService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -79,7 +87,7 @@ public class CareerPlanServiceImpl implements CareerPlanService {
                     .eq(CareerPlan::getUserId, userId))) {
                 throw new BusinessException(409, "职业规划已存在，请使用重新规划功能");
             }
-            CareerPlan plan = saveCareerPlan(userId, result);
+            CareerPlan plan = saveCareerPlan(userId, result, INITIAL_VERSION, null);
             saveCareerTasks(userId, plan.getId(), result.getRoadmap());
             CareerPlan refreshedPlan = careerPlanMapper.selectById(plan.getId());
             return refreshedPlan == null ? plan : refreshedPlan;
@@ -91,17 +99,68 @@ public class CareerPlanServiceImpl implements CareerPlanService {
     }
 
     @Override
+    public CareerPlanVO regeneratePlan(CareerPlanRegenerateDTO request) {
+        Long userId = UserContext.getUserId();
+        CareerPlan oldPlan = findCurrentPlan(userId);
+        if (oldPlan == null) throw new BusinessException(409, "请先生成首版职业规划");
+        Long interviewId = request.getSourceInterviewId();
+        if (careerPlanMapper.exists(Wrappers.<CareerPlan>lambdaQuery()
+                .eq(CareerPlan::getUserId, userId)
+                .eq(CareerPlan::getSourceInterviewId, interviewId))) {
+            throw new BusinessException(409, "该面试报告已用于重新规划");
+        }
+
+        // 报告服务验证面试归属与结束状态；旧报告也会在这里补齐能力回写。
+        InterviewReportVO report = interviewReportService.generateReport(interviewId);
+        UserProfileVO profile = userProfileService.getCurrentProfile();
+        List<UserSkillVO> skills = userSkillService.getCurrentUserSkills();
+        if (skills.isEmpty()) throw new BusinessException(400, "请先填写至少一项技能后再重新规划");
+        List<CareerTaskVO> oldTasks = careerTaskService.getCurrentTasks(null, oldPlan.getId());
+        CareerPlanResult result = careerPlannerAgent.regeneratePlan(userId, profile, skills,
+                toCareerPlanVO(oldPlan), oldTasks, report);
+
+        CareerPlan savedPlan = transactionTemplate.execute(status -> {
+            // 模型调用在事务外；再次校验当前版本与来源，避免并发请求覆盖新近生成的规划。
+            if (careerPlanMapper.exists(Wrappers.<CareerPlan>lambdaQuery()
+                    .eq(CareerPlan::getUserId, userId)
+                    .eq(CareerPlan::getSourceInterviewId, interviewId))) {
+                throw new BusinessException(409, "该面试报告已用于重新规划");
+            }
+            CareerPlan latest = findCurrentPlan(userId);
+            if (latest == null || !latest.getId().equals(oldPlan.getId())) {
+                throw new BusinessException(409, "职业规划已更新，请刷新后重试");
+            }
+            int archived = careerPlanMapper.update(null, Wrappers.<CareerPlan>lambdaUpdate()
+                    .eq(CareerPlan::getId, oldPlan.getId())
+                    .eq(CareerPlan::getUserId, userId)
+                    .eq(CareerPlan::getStatus, CURRENT_STATUS)
+                    .set(CareerPlan::getStatus, HISTORICAL_STATUS));
+            if (archived != 1) throw new BusinessException(409, "职业规划已更新，请刷新后重试");
+            CareerPlan plan = saveCareerPlan(userId, result, oldPlan.getVersion() + 1, interviewId);
+            saveCareerTasks(userId, plan.getId(), result.getRoadmap());
+            CareerPlan refreshed = careerPlanMapper.selectById(plan.getId());
+            return refreshed == null ? plan : refreshed;
+        });
+        if (savedPlan == null) throw new BusinessException(500, "重新规划保存失败，请稍后重试");
+        return toCareerPlanVO(savedPlan);
+    }
+
+    @Override
     public CareerPlanVO getCurrentPlan() {
         Long userId = UserContext.getUserId();
-        CareerPlan plan = careerPlanMapper.selectOne(Wrappers.<CareerPlan>lambdaQuery()
-                .eq(CareerPlan::getUserId, userId)
-                .eq(CareerPlan::getStatus, CURRENT_STATUS)
-                .orderByDesc(CareerPlan::getVersion)
-                .last("LIMIT 1"));
+        CareerPlan plan = findCurrentPlan(userId);
         if (plan == null) {
             throw new BusinessException(404, "当前职业规划不存在");
         }
         return toCareerPlanVO(plan);
+    }
+
+    private CareerPlan findCurrentPlan(Long userId) {
+        return careerPlanMapper.selectOne(Wrappers.<CareerPlan>lambdaQuery()
+                .eq(CareerPlan::getUserId, userId)
+                .eq(CareerPlan::getStatus, CURRENT_STATUS)
+                .orderByDesc(CareerPlan::getVersion)
+                .last("LIMIT 1"));
     }
 
     @Override
@@ -144,10 +203,11 @@ public class CareerPlanServiceImpl implements CareerPlanService {
                 .build();
     }
 
-    private CareerPlan saveCareerPlan(Long userId, CareerPlanResult result) {
+    private CareerPlan saveCareerPlan(Long userId, CareerPlanResult result, int version, Long sourceInterviewId) {
         CareerPlan plan = new CareerPlan();
         plan.setUserId(userId);
-        plan.setVersion(INITIAL_VERSION);
+        plan.setVersion(version);
+        plan.setSourceInterviewId(sourceInterviewId);
         plan.setTargetPosition(result.getTargetPosition().trim());
         plan.setMatchScore(result.getMatchScore());
         plan.setSummary(result.getSummary().trim());

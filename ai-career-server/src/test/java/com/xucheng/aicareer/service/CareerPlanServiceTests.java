@@ -5,6 +5,7 @@ import com.xucheng.aicareer.agent.career.CareerPlannerAgent;
 import com.xucheng.aicareer.agent.career.dto.CareerPlanResult;
 import com.xucheng.aicareer.agent.career.dto.CareerTaskResult;
 import com.xucheng.aicareer.agent.career.dto.RoadmapStage;
+import com.xucheng.aicareer.dto.CareerPlanRegenerateDTO;
 import com.xucheng.aicareer.entity.CareerPlan;
 import com.xucheng.aicareer.entity.CareerTask;
 import com.xucheng.aicareer.exception.BusinessException;
@@ -13,6 +14,7 @@ import com.xucheng.aicareer.mapper.CareerTaskMapper;
 import com.xucheng.aicareer.service.impl.CareerPlanServiceImpl;
 import com.xucheng.aicareer.utils.UserContext;
 import com.xucheng.aicareer.vo.CareerPlanVO;
+import com.xucheng.aicareer.vo.InterviewReportVO;
 import com.xucheng.aicareer.vo.ProfileCompletionVO;
 import com.xucheng.aicareer.vo.UserProfileVO;
 import com.xucheng.aicareer.vo.UserSkillVO;
@@ -29,6 +31,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -50,7 +53,9 @@ class CareerPlanServiceTests {
         CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
         TransactionTemplate transactionTemplate = immediateTransactionTemplate();
         CareerPlanServiceImpl service = new CareerPlanServiceImpl(
-                planMapper, taskMapper, profileService, skillService, agent, new ObjectMapper(), transactionTemplate);
+                planMapper, taskMapper, profileService, skillService, agent,
+                mock(CareerTaskService.class), mock(InterviewReportService.class),
+                new ObjectMapper(), transactionTemplate);
         UserContext.setUserId(10001L);
 
         UserProfileVO profile = UserProfileVO.builder()
@@ -104,6 +109,8 @@ class CareerPlanServiceTests {
                 profileService,
                 mock(UserSkillService.class),
                 agent,
+                mock(CareerTaskService.class),
+                mock(InterviewReportService.class),
                 new ObjectMapper(),
                 immediateTransactionTemplate());
         UserContext.setUserId(10001L);
@@ -129,6 +136,8 @@ class CareerPlanServiceTests {
                 mock(UserProfileService.class),
                 mock(UserSkillService.class),
                 agent,
+                mock(CareerTaskService.class),
+                mock(InterviewReportService.class),
                 new ObjectMapper(),
                 immediateTransactionTemplate());
         UserContext.setUserId(10001L);
@@ -138,6 +147,58 @@ class CareerPlanServiceTests {
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("职业规划已存在，请使用重新规划功能");
         verify(agent, never()).generatePlan(any(), any(), any());
+    }
+
+    @Test
+    void regeneratePlanVersionsOldPlanAndLinksSourceInterview() {
+        CareerPlanMapper planMapper = mock(CareerPlanMapper.class);
+        CareerTaskMapper taskMapper = mock(CareerTaskMapper.class);
+        UserProfileService profileService = mock(UserProfileService.class);
+        UserSkillService skillService = mock(UserSkillService.class);
+        CareerTaskService taskService = mock(CareerTaskService.class);
+        InterviewReportService reportService = mock(InterviewReportService.class);
+        CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
+        CareerPlanServiceImpl service = new CareerPlanServiceImpl(planMapper, taskMapper,
+                profileService, skillService, agent, taskService, reportService,
+                new ObjectMapper(), immediateTransactionTemplate());
+        UserContext.setUserId(10001L);
+        CareerPlan oldPlan = new CareerPlan();
+        oldPlan.setId(20001L);
+        oldPlan.setUserId(10001L);
+        oldPlan.setVersion(1);
+        oldPlan.setStatus(1);
+        oldPlan.setTargetPosition("Java后端开发工程师");
+        when(planMapper.selectOne(any(Wrapper.class))).thenReturn(oldPlan);
+        when(planMapper.exists(any(Wrapper.class))).thenReturn(false);
+        when(planMapper.update(any(), any(Wrapper.class))).thenReturn(1);
+        when(planMapper.insert(any(CareerPlan.class))).thenAnswer(invocation -> {
+            invocation.<CareerPlan>getArgument(0).setId(20002L);
+            return 1;
+        });
+        UserProfileVO profile = UserProfileVO.builder().targetPosition("Java后端开发工程师").build();
+        List<UserSkillVO> skills = List.of(UserSkillVO.builder().skillName("Java").score(69).build());
+        InterviewReportVO report = InterviewReportVO.builder().interviewId(30001L)
+                .scores(java.util.Map.of("Java集合框架", 69)).build();
+        when(reportService.generateReport(30001L)).thenReturn(report);
+        when(profileService.getCurrentProfile()).thenReturn(profile);
+        when(skillService.getCurrentUserSkills()).thenReturn(skills);
+        when(taskService.getCurrentTasks(null, 20001L)).thenReturn(List.of());
+        when(agent.regeneratePlan(eq(10001L), eq(profile), eq(skills), any(), eq(List.of()), eq(report)))
+                .thenReturn(generatedPlan());
+        CareerPlanRegenerateDTO request = new CareerPlanRegenerateDTO();
+        request.setReason("INTERVIEW");
+        request.setSourceInterviewId(30001L);
+
+        CareerPlanVO newPlan = service.regeneratePlan(request);
+
+        assertThat(newPlan.getId()).isEqualTo(20002L);
+        assertThat(newPlan.getVersion()).isEqualTo(2);
+        assertThat(newPlan.getSourceInterviewId()).isEqualTo(30001L);
+        ArgumentCaptor<CareerPlan> saved = ArgumentCaptor.forClass(CareerPlan.class);
+        verify(planMapper).insert(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(1);
+        verify(planMapper).update(any(), any(Wrapper.class));
+        verify(taskMapper, org.mockito.Mockito.times(6)).insert(any(CareerTask.class));
     }
 
     private CareerPlanResult generatedPlan() {

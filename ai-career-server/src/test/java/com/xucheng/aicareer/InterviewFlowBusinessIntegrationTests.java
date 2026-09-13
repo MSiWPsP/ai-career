@@ -9,12 +9,14 @@ import com.xucheng.aicareer.dto.InterviewAnswerDTO;
 import com.xucheng.aicareer.dto.RegisterDTO;
 import com.xucheng.aicareer.dto.StartInterviewDTO;
 import com.xucheng.aicareer.entity.Interview;
+import com.xucheng.aicareer.entity.AbilityScore;
 import com.xucheng.aicareer.entity.InterviewMessage;
 import com.xucheng.aicareer.entity.InterviewReport;
 import com.xucheng.aicareer.entity.User;
 import com.xucheng.aicareer.entity.UserProfile;
 import com.xucheng.aicareer.entity.UserSkill;
 import com.xucheng.aicareer.mapper.InterviewMapper;
+import com.xucheng.aicareer.mapper.AbilityScoreMapper;
 import com.xucheng.aicareer.mapper.InterviewMessageMapper;
 import com.xucheng.aicareer.mapper.InterviewReportMapper;
 import com.xucheng.aicareer.mapper.UserMapper;
@@ -56,6 +58,7 @@ class InterviewFlowBusinessIntegrationTests {
     private final InterviewMapper interviewMapper;
     private final InterviewMessageMapper interviewMessageMapper;
     private final InterviewReportMapper interviewReportMapper;
+    private final AbilityScoreMapper abilityScoreMapper;
     private final InterviewService interviewService;
 
     @MockitoBean
@@ -102,9 +105,23 @@ class InterviewFlowBusinessIntegrationTests {
         assertThat(messages.getLast().getEvaluation()).isEqualTo("回答较完整");
         assertThat(interviewReportMapper.selectCount(Wrappers.<InterviewReport>lambdaQuery()
                 .eq(InterviewReport::getInterviewId, interview.getId()))).isEqualTo(1);
+        assertThat(abilityScoreMapper.selectList(Wrappers.<AbilityScore>lambdaQuery()
+                .eq(AbilityScore::getSourceType, "INTERVIEW")
+                .eq(AbilityScore::getSourceId, interview.getId())))
+                .singleElement().satisfies(score -> {
+                    assertThat(score.getAbilityName()).isEqualTo("Java集合框架");
+                    assertThat(score.getScore()).isEqualTo(69);
+                });
+        UserSkill updatedSkill = userSkillMapper.selectOne(Wrappers.<UserSkill>lambdaQuery()
+                .eq(UserSkill::getUserId, userId).eq(UserSkill::getSkillName, "Java"));
+        assertThat(updatedSkill.getScore()).isEqualTo(69);
+        assertThat(updatedSkill.getSource()).isEqualTo("INTERVIEW");
         assertThat(interviewService.generateReport(interview.getId()).getId()).isEqualTo(finished.getReportId());
         assertThat(interviewReportMapper.selectCount(Wrappers.<InterviewReport>lambdaQuery()
                 .eq(InterviewReport::getInterviewId, interview.getId()))).isEqualTo(1);
+        assertThat(abilityScoreMapper.selectCount(Wrappers.<AbilityScore>lambdaQuery()
+                .eq(AbilityScore::getSourceId, interview.getId()))).isEqualTo(1);
+        assertThat(userSkillMapper.selectById(updatedSkill.getId()).getScore()).isEqualTo(69);
     }
 
     @Test
@@ -232,7 +249,7 @@ class InterviewFlowBusinessIntegrationTests {
     private InterviewReportResult report() {
         InterviewReportResult result = new InterviewReportResult();
         result.setTotalScore(82);
-        result.setScores(java.util.Map.of("Spring Boot", 82));
+        result.setScores(java.util.Map.of("Java集合框架", 82));
         result.setAdvantages(List.of("条件装配思路清晰"));
         result.setWeaknesses(List.of("缺少边界场景说明"));
         result.setSuggestions(List.of(com.xucheng.aicareer.vo.InterviewSuggestionVO.builder()

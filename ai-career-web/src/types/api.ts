@@ -73,7 +73,7 @@ export interface RoadmapStage {
 }
 
 export interface CareerPlan {
-  id: number
+  id: string
   version: number
   targetPosition: string
   matchScore?: number
@@ -82,7 +82,7 @@ export interface CareerPlan {
   weaknesses?: string[]
   roadmap?: RoadmapStage[]
   status: number
-  sourceInterviewId?: number
+  sourceInterviewId?: string
   createTime?: string
   updateTime?: string
 }

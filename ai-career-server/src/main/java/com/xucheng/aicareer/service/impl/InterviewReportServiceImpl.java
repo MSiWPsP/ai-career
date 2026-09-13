@@ -11,6 +11,7 @@ import com.xucheng.aicareer.mapper.InterviewMapper;
 import com.xucheng.aicareer.mapper.InterviewMessageMapper;
 import com.xucheng.aicareer.mapper.InterviewReportMapper;
 import com.xucheng.aicareer.service.InterviewReportService;
+import com.xucheng.aicareer.service.InterviewAbilityWritebackService;
 import com.xucheng.aicareer.service.UserProfileService;
 import com.xucheng.aicareer.service.UserSkillService;
 import com.xucheng.aicareer.utils.UserContext;
@@ -40,6 +41,7 @@ public class InterviewReportServiceImpl implements InterviewReportService {
     private final UserProfileService profileService;
     private final UserSkillService skillService;
     private final InterviewReportAgent reportAgent;
+    private final InterviewAbilityWritebackService abilityWritebackService;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
     private final Object[] locks = new Object[64];
@@ -48,6 +50,7 @@ public class InterviewReportServiceImpl implements InterviewReportService {
             InterviewMapper interviewMapper, InterviewMessageMapper messageMapper,
             InterviewReportMapper reportMapper, UserProfileService profileService,
             UserSkillService skillService, InterviewReportAgent reportAgent,
+            InterviewAbilityWritebackService abilityWritebackService,
             TransactionTemplate transactionTemplate, ObjectMapper objectMapper) {
         this.interviewMapper = interviewMapper;
         this.messageMapper = messageMapper;
@@ -55,6 +58,7 @@ public class InterviewReportServiceImpl implements InterviewReportService {
         this.profileService = profileService;
         this.skillService = skillService;
         this.reportAgent = reportAgent;
+        this.abilityWritebackService = abilityWritebackService;
         this.transactionTemplate = transactionTemplate;
         this.objectMapper = objectMapper;
         for (int index = 0; index < locks.length; index++) locks[index] = new Object();
@@ -71,7 +75,15 @@ public class InterviewReportServiceImpl implements InterviewReportService {
                 throw new BusinessException(409, "面试结束后才能生成报告");
             }
             InterviewReport existing = findReport(interviewId, userId);
-            if (existing != null) return toVO(existing);
+            if (existing != null) {
+                // 已有报告可能生成于能力回写功能上线前，显式重试时补齐一次写回。
+                transactionTemplate.execute(status -> {
+                    abilityWritebackService.writeback(userId, interviewId,
+                            objectMapper.readValue(existing.getScores(), SCORE_TYPE));
+                    return null;
+                });
+                return toVO(existing);
+            }
 
             List<InterviewMessage> messages = messageMapper.selectList(Wrappers.<InterviewMessage>lambdaQuery()
                     .eq(InterviewMessage::getInterviewId, interviewId)
@@ -91,7 +103,11 @@ public class InterviewReportServiceImpl implements InterviewReportService {
                                     message.getScore(), message.getEvaluation())).toList()));
             InterviewReport saved = transactionTemplate.execute(status -> {
                 InterviewReport duplicate = findReport(interviewId, userId);
-                if (duplicate != null) return duplicate;
+                if (duplicate != null) {
+                    abilityWritebackService.writeback(userId, interviewId,
+                            objectMapper.readValue(duplicate.getScores(), SCORE_TYPE));
+                    return duplicate;
+                }
                 InterviewReport report = new InterviewReport();
                 report.setInterviewId(interviewId);
                 report.setUserId(userId);
@@ -102,6 +118,7 @@ public class InterviewReportServiceImpl implements InterviewReportService {
                 report.setSuggestions(writeJson(result.getSuggestions()));
                 report.setSummary(result.getSummary().trim());
                 reportMapper.insert(report);
+                abilityWritebackService.writeback(userId, interviewId, result.getScores());
                 return report;
             });
             if (saved == null) throw new BusinessException(500, "面试报告保存失败");

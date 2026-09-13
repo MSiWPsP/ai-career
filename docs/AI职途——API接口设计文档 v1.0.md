@@ -720,18 +720,20 @@ POST /api/career/plan/regenerate
 ```text
 读取旧规划
  ↓
-读取最新面试
+校验指定面试归属并读取报告，补齐尚未写回的能力评分
  ↓
-读取最新技能
+读取最新职业画像、技能与旧规划任务完成情况
  ↓
 CareerPlannerAgent
  ↓
-生成新规划
+生成新规划及成长任务
  ↓
 旧规划 status = 0
  ↓
-新规划 status = 1
+新规划 status = 1，version + 1，关联 sourceInterviewId
 ```
+
+当前仅支持 `reason=INTERVIEW`。同一面试报告只能触发一次重新规划；旧版本与旧任务保留，默认任务列表切换到新规划。
 
 ---
 
@@ -1066,7 +1068,7 @@ POST /api/interview/{id}/finish
 依据完整面试记录生成并保存结构化报告
 ```
 
-至少回答过一道题时自动生成报告；模型失败不回滚已结束的面试，`reportId` 返回 `null`，用户可通过 `POST /api/interview/{id}/report/generate` 重试。未回答任何题目时不生成报告。能力回写与动态重新规划由下一业务增量实现。
+至少回答过一道题时自动生成报告；模型失败不回滚已结束的面试，`reportId` 返回 `null`，用户可通过 `POST /api/interview/{id}/report/generate` 重试。未回答任何题目时不生成报告。报告与能力评分在同一事务中保存，分项评分按旧评分 0.6 + 面试评分 0.4 融合，并更新能明确匹配的当前技能；用户可在报告页触发重新规划。
 
 ---
 

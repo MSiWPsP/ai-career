@@ -4,6 +4,7 @@ import { ChatDotRound, CircleCheck, MagicStick, RefreshRight, Warning } from '@e
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { generateInterviewReport, getInterview, getInterviewReport } from '../../api/interview'
+import { getCurrentPlan, regenerateCareerPlan } from '../../api/career'
 import AbilityRadar from '../../components/AbilityRadar.vue'
 import type { AbilityRadar as AbilityRadarData, InterviewDetail, InterviewReport } from '../../types/api'
 import { difficultyLabel, formatDate, interviewTypeLabel } from '../../utils/data'
@@ -15,6 +16,8 @@ const detail = ref<InterviewDetail>()
 const report = ref<InterviewReport>()
 const loadError = ref(false)
 const generating = ref(false)
+const replanning = ref(false)
+const hasPlan = ref(false)
 
 const radar = computed<AbilityRadarData>(() => {
   const scores = report.value?.scores || {}
@@ -39,7 +42,11 @@ async function loadReport() {
   loading.value = true
   loadError.value = false
   try {
-    detail.value = await getInterview(id)
+    const [interview, currentPlan] = await Promise.all([
+      getInterview(id), getCurrentPlan({ silent: true }).catch(() => undefined),
+    ])
+    detail.value = interview
+    hasPlan.value = Boolean(currentPlan)
     try {
       report.value = await getInterviewReport(id, { silent: true })
     } catch {
@@ -62,8 +69,25 @@ async function createReport() {
   try {
     report.value = await generateInterviewReport(id)
     ElMessage.success('面试报告已生成')
+  } catch {
+    // 请求层已提示具体错误，保留当前页面供再次重试。
   } finally {
     generating.value = false
+  }
+}
+
+async function replan() {
+  const id = String(route.params.id || '')
+  if (!id || replanning.value) return
+  replanning.value = true
+  try {
+    await regenerateCareerPlan(id)
+    ElMessage.success('职业规划已根据面试反馈更新')
+    await router.push('/career/plan')
+  } catch {
+    // 模型或并发校验失败时不离开报告页，用户可以查看提示后重试。
+  } finally {
+    replanning.value = false
   }
 }
 </script>
@@ -139,7 +163,8 @@ async function createReport() {
 
       <section class="replan-banner">
         <div><span>形成成长闭环</span><strong>根据本次面试表现，动态调整职业规划</strong></div>
-        <el-button type="primary" size="large" :icon="MagicStick" disabled>调整职业规划 · 待接入</el-button>
+        <el-button v-if="hasPlan" type="primary" size="large" :icon="MagicStick" :loading="replanning" @click="replan">根据本次面试重新规划</el-button>
+        <el-button v-else type="primary" size="large" :icon="MagicStick" @click="router.push('/career/plan')">先生成首版职业规划</el-button>
       </section>
     </template>
 

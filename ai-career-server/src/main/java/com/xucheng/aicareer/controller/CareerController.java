@@ -3,6 +3,7 @@ package com.xucheng.aicareer.controller;
 import com.xucheng.aicareer.common.Result;
 import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
+import com.xucheng.aicareer.dto.CareerPlanRegenerateDTO;
 import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerPlanService;
 import com.xucheng.aicareer.vo.CareerChatVO;
@@ -107,6 +108,12 @@ public class CareerController {
     @Operation(summary = "生成首版职业规划", description = "读取当前用户职业画像和技能，调用CareerPlannerAgent生成结构化规划并同步创建成长任务")
     public Result<CareerPlanVO> generatePlan() {
         return Result.success("职业规划生成成功", careerPlanService.generatePlan());
+    }
+
+    @PostMapping("/plan/regenerate")
+    @Operation(summary = "根据面试反馈重新规划", description = "读取指定面试报告、当前画像技能及旧规划任务进度，生成新版本并归档旧版本")
+    public Result<CareerPlanVO> regeneratePlan(@Valid @RequestBody CareerPlanRegenerateDTO request) {
+        return Result.success("职业规划已更新", careerPlanService.regeneratePlan(request));
     }
 
     @GetMapping("/plan/current")
