@@ -154,7 +154,7 @@ function logout() {
     <div v-if="sidebarOpen" class="sidebar-mask" @click="sidebarOpen = false" />
     <aside class="sidebar" :class="{ 'is-open': sidebarOpen }">
       <div class="brand" @click="navigate('/dashboard')">
-        <span class="brand-mark">途</span>
+        <span class="brand-mark"><img src="/ai-career-mark.png" alt="" /></span>
         <span>
           <strong>AI职途</strong>
           <small>智能职业成长平台</small>

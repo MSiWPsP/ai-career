@@ -67,8 +67,7 @@ async function switchMode() {
       <div class="hero-orbit orbit-two" />
       <div class="hero-content">
         <div class="login-brand">
-          <span>途</span>
-          <strong>AI职途</strong>
+          <img src="/ai-career-logo.png" alt="AI职途——用 AI 点亮你的职业未来" />
         </div>
         <p class="hero-kicker">AI CAREER GROWTH PLATFORM</p>
         <h1>让每一步成长，<br />都更接近理想职业。</h1>
@@ -199,28 +198,24 @@ async function switchMode() {
 }
 
 .login-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 76px;
+  position: relative;
+  width: 175px;
+  height: 170px;
+  overflow: hidden;
+  margin-bottom: 26px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(12, 26, 76, 0.2);
 }
 
-.login-brand span {
-  display: grid;
-  width: 45px;
-  height: 45px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 20px;
-  font-weight: 800;
-  backdrop-filter: blur(8px);
-}
-
-.login-brand strong {
-  font-size: 23px;
-  letter-spacing: 1px;
+.login-brand img {
+  position: absolute;
+  top: -42px;
+  left: -38px;
+  display: block;
+  width: 250px;
+  height: 250px;
+  max-width: none;
 }
 
 .hero-kicker {
@@ -374,7 +369,16 @@ async function switchMode() {
   }
 
   .login-brand {
-    margin-bottom: 35px;
+    width: 150px;
+    height: 145px;
+    margin-bottom: 22px;
+  }
+
+  .login-brand img {
+    top: -36px;
+    left: -33px;
+    width: 215px;
+    height: 215px;
   }
 
   .hero-quote {
