@@ -62,17 +62,14 @@ async function switchMode() {
 <template>
   <main class="login-page">
     <section class="login-hero">
-      <div class="hero-grid" />
-      <div class="hero-orbit orbit-one" />
-      <div class="hero-orbit orbit-two" />
       <div class="hero-content">
         <div class="login-brand">
-          <img src="/ai-career-logo.png" alt="AI职途——用 AI 点亮你的职业未来" />
+          <img class="login-logo-full" src="/ai-career-logo.png" alt="AI职途——用 AI 点亮你的职业未来" />
+          <img class="login-logo-mark" src="/ai-career-mark.png" alt="AI职途" />
         </div>
-        <p class="hero-kicker">AI CAREER GROWTH PLATFORM</p>
         <h1>让每一步成长，<br />都更接近理想职业。</h1>
         <p class="hero-desc">
-          从职业画像、成长规划到模拟面试，用 AI 陪你看清方向，拆解目标，持续进步。
+          从职业画像、成长规划到模拟面试，清晰了解自己，拆解目标，持续积累职业能力。
         </p>
         <div class="journey">
           <span class="active">职业认知</span><i />
@@ -81,15 +78,11 @@ async function switchMode() {
           <span>模拟面试</span>
         </div>
       </div>
-      <div class="hero-quote">
-        <span>“</span>
-        <p>你不需要一次想清楚整个未来，<br />只需要走好下一步。</p>
-      </div>
     </section>
 
     <section class="login-panel">
       <div class="form-wrap">
-        <p class="eyebrow">{{ isRegister ? 'CREATE ACCOUNT' : 'WELCOME BACK' }}</p>
+        <p class="eyebrow">{{ isRegister ? '新用户注册' : '账号登录' }}</p>
         <h2>{{ isRegister ? '创建你的成长档案' : '欢迎回到 AI职途' }}</h2>
         <p class="form-subtitle">
           {{ isRegister ? '注册后，从一份职业画像开始你的成长旅程。' : '登录后继续查看你的职业路线与成长任务。' }}
@@ -143,109 +136,66 @@ async function switchMode() {
 .login-page {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: minmax(460px, 1.18fr) minmax(420px, 0.82fr);
+  grid-template-columns: minmax(460px, 1.05fr) minmax(420px, 0.95fr);
   background: #fff;
 }
 
 .login-hero {
-  position: relative;
   display: flex;
-  overflow: hidden;
   align-items: center;
-  padding: 9vw;
+  padding: clamp(56px, 8vw, 120px);
   color: #fff;
-  background:
-    radial-gradient(circle at 80% 20%, rgba(153, 141, 255, 0.34), transparent 28%),
-    radial-gradient(circle at 18% 80%, rgba(80, 154, 234, 0.25), transparent 30%),
-    linear-gradient(145deg, #292d6a 0%, #4b4dc2 58%, #6d66dc 100%);
-}
-
-.hero-grid {
-  position: absolute;
-  inset: 0;
-  opacity: 0.14;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: linear-gradient(120deg, #000, transparent 82%);
-}
-
-.hero-orbit {
-  position: absolute;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 50%;
-}
-
-.orbit-one {
-  width: 420px;
-  height: 420px;
-  right: -160px;
-  top: -130px;
-}
-
-.orbit-two {
-  width: 260px;
-  height: 260px;
-  right: 90px;
-  bottom: -150px;
+  background: #163b70;
 }
 
 .hero-content {
-  position: relative;
-  z-index: 2;
-  max-width: 650px;
+  max-width: 590px;
 }
 
 .login-brand {
   position: relative;
-  width: 175px;
-  height: 170px;
+  width: 200px;
+  height: 205px;
   overflow: hidden;
-  margin-bottom: 26px;
-  border-radius: 18px;
+  margin-bottom: 40px;
+  border-radius: 8px;
   background: #fff;
-  box-shadow: 0 18px 40px rgba(12, 26, 76, 0.2);
 }
 
 .login-brand img {
   position: absolute;
-  top: -42px;
-  left: -38px;
+  top: -53px;
+  left: -45px;
   display: block;
-  width: 250px;
-  height: 250px;
+  width: 290px;
+  height: 290px;
   max-width: none;
 }
 
-.hero-kicker {
-  margin: 0 0 15px;
-  color: #c7c9ff;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 2.2px;
+.login-brand .login-logo-mark {
+  display: none;
 }
 
 .hero-content h1 {
   margin: 0;
-  font-size: clamp(38px, 4vw, 60px);
-  line-height: 1.24;
-  letter-spacing: -1.5px;
+  font-size: clamp(36px, 3.7vw, 54px);
+  line-height: 1.3;
+  letter-spacing: -1px;
 }
 
 .hero-desc {
-  max-width: 560px;
-  margin: 25px 0 38px;
-  color: #dfe1ff;
+  max-width: 520px;
+  margin: 24px 0 46px;
+  color: #d8e6f7;
   font-size: 16px;
-  line-height: 1.9;
+  line-height: 1.85;
 }
 
 .journey {
   display: flex;
   align-items: center;
   max-width: 580px;
-  color: #d8daf9;
+  color: #b8cee8;
   font-size: 12px;
 }
 
@@ -262,35 +212,14 @@ async function switchMode() {
   height: 1px;
   flex: 1;
   margin: 0 10px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.hero-quote {
-  position: absolute;
-  z-index: 2;
-  right: 8%;
-  bottom: 7%;
-  display: flex;
-  gap: 9px;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.hero-quote span {
-  font-family: Georgia, serif;
-  font-size: 36px;
-}
-
-.hero-quote p {
-  margin: 7px 0 0;
+  background: #7599c3;
 }
 
 .login-panel {
   position: relative;
   display: grid;
   place-items: center;
-  padding: 60px;
+  padding: 64px;
 }
 
 .form-wrap {
@@ -299,13 +228,13 @@ async function switchMode() {
 
 .form-wrap h2 {
   margin: 0;
-  color: #24273d;
+  color: var(--text);
   font-size: 30px;
 }
 
 .form-subtitle {
   margin: 10px 0 34px;
-  color: #898da0;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -315,20 +244,19 @@ async function switchMode() {
   align-items: center;
   justify-content: space-between;
   margin: -4px 0 20px;
-  color: #8c90a4;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .submit-button {
   width: 100%;
   height: 46px;
-  border-radius: 10px;
-  box-shadow: 0 10px 22px rgba(85, 88, 217, 0.2);
+  border-radius: 7px;
 }
 
 .switch-mode {
   margin-top: 24px;
-  color: #8b8fa2;
+  color: var(--muted);
   font-size: 13px;
   text-align: center;
 }
@@ -344,18 +272,18 @@ async function switchMode() {
 .copyright {
   position: absolute;
   bottom: 25px;
-  color: #b0b3c0;
+  color: #8493a5;
   font-size: 11px;
 }
 
 :deep(.el-form-item__label) {
-  color: #4f5367;
+  color: var(--text);
   font-weight: 600;
 }
 
 :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  box-shadow: 0 0 0 1px #e0e2eb inset;
+  border-radius: 7px;
+  box-shadow: 0 0 0 1px var(--line) inset;
 }
 
 @media (max-width: 880px) {
@@ -369,25 +297,77 @@ async function switchMode() {
   }
 
   .login-brand {
-    width: 150px;
-    height: 145px;
+    width: 166px;
+    height: 178px;
     margin-bottom: 22px;
   }
 
   .login-brand img {
-    top: -36px;
-    left: -33px;
-    width: 215px;
-    height: 215px;
+    top: -44px;
+    left: -37px;
+    width: 240px;
+    height: 240px;
   }
 
-  .hero-quote {
+  .login-panel {
+    min-height: 590px;
+    padding: 55px 24px 80px;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-hero {
+    min-height: 0;
+    padding: 26px 24px;
+  }
+
+  .hero-content {
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr);
+    align-items: center;
+    gap: 0 16px;
+  }
+
+  .login-brand {
+    width: 74px;
+    height: 70px;
+    grid-row: span 2;
+    margin: 0;
+    padding: 5px;
+  }
+
+  .login-brand .login-logo-full {
+    display: none;
+  }
+
+  .login-brand .login-logo-mark {
+    position: static;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .hero-content h1 {
+    font-size: 22px;
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+
+  .hero-desc {
+    grid-column: 1 / -1;
+    margin: 14px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .journey {
     display: none;
   }
 
   .login-panel {
-    min-height: 610px;
-    padding: 55px 24px 80px;
+    min-height: 0;
+    padding-top: 36px;
   }
 }
 </style>

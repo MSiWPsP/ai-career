@@ -5,8 +5,7 @@ import {
   ArrowRight,
   ChatDotRound,
   CircleCheck,
-  MagicStick,
-  Sunny,
+  Compass,
   TrendCharts,
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
@@ -51,10 +50,11 @@ const greeting = computed(() => {
 })
 
 const roadmap = computed(() => parseJsonField<RoadmapStage[]>(plan.value?.roadmap, []))
+const nextTask = computed(() => tasks.value.find((task) => task.status === 1) ?? tasks.value.find((task) => task.status === 0))
 
 const advice = computed(() => {
   if (!profile.value?.targetPosition) {
-    return '先完善职业画像，明确目标岗位和可投入的学习时间，我会据此为你组织接下来的成长路线。'
+    return '先完善职业画像，明确目标岗位和可投入的学习时间，再据此制定接下来的成长路线。'
   }
   if (!radar.value.values.length) {
     return '你的职业目标已经明确。下一步补充技能画像，能力雷达图会帮助你快速识别优先提升方向。'
@@ -103,50 +103,68 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 </script>
 
 <template>
-  <div v-loading="loading">
-    <header class="dashboard-hero">
+  <div v-loading="loading" class="dashboard-page">
+    <header class="dashboard-heading">
       <div>
-        <p class="eyebrow">TODAY'S GROWTH</p>
-        <h1>{{ greeting }}，{{ user?.nickname || '同学' }} <el-icon><Sunny /></el-icon></h1>
-        <p>今天也是向目标前进一步的一天。</p>
+        <h1>{{ greeting }}，{{ user?.nickname || '同学' }}</h1>
+        <p>围绕当前职业目标，稳步推进每一项成长行动。</p>
       </div>
-      <div class="goal-card">
-        <span>当前职业目标</span>
-        <strong>{{ profile?.targetPosition || plan?.targetPosition || '尚未设置' }}</strong>
-        <button @click="router.push('/profile')">编辑目标 <el-icon><ArrowRight /></el-icon></button>
-      </div>
+      <el-button plain @click="router.push('/career/plan')">查看成长计划 <el-icon class="el-icon--right"><ArrowRight /></el-icon></el-button>
     </header>
+
+    <section class="surface-card goal-feature">
+      <div class="goal-feature-main">
+        <span class="section-label">当前职业目标</span>
+        <h2>{{ profile?.targetPosition || plan?.targetPosition || '尚未设置职业目标' }}</h2>
+        <p>{{ plan ? '已结合职业画像与技能记录生成职业成长路线。' : '完善职业画像并生成规划，让成长路线更清晰。' }}</p>
+        <button class="text-link" @click="router.push('/profile')">{{ profile?.targetPosition ? '编辑职业目标' : '完善职业画像' }} <el-icon><ArrowRight /></el-icon></button>
+      </div>
+      <div class="goal-feature-next">
+        <span class="section-label">下一步行动</span>
+        <strong>{{ nextTask?.taskName || '从完善职业画像开始' }}</strong>
+        <small>{{ nextTask ? (nextTask.status === 1 ? '正在进行' : '待开始') + (nextTask.deadline ? ' · 截止 ' + formatDate(nextTask.deadline) : '') : '明确目标后即可获得个性化成长任务' }}</small>
+        <el-button type="primary" @click="router.push(nextTask ? '/tasks' : '/profile')">{{ nextTask ? '查看任务' : '完善画像' }} <el-icon class="el-icon--right"><ArrowRight /></el-icon></el-button>
+      </div>
+    </section>
 
     <section class="metrics-grid">
       <article class="metric-card">
-        <el-icon class="metric-icon purple"><Aim /></el-icon>
+        <el-icon class="metric-icon"><Aim /></el-icon>
         <div><p>职业匹配度</p><strong>{{ plan?.matchScore ?? '—' }}<small v-if="plan?.matchScore">%</small></strong></div>
         <em>目标契合情况</em>
       </article>
       <article class="metric-card">
-        <el-icon class="metric-icon green"><CircleCheck /></el-icon>
+        <el-icon class="metric-icon"><CircleCheck /></el-icon>
         <div><p>任务完成率</p><strong>{{ statistics.completionRate }}<small>%</small></strong></div>
         <em>{{ statistics.completed }}/{{ statistics.total }} 项已完成</em>
       </article>
       <article class="metric-card">
-        <el-icon class="metric-icon orange"><ChatDotRound /></el-icon>
+        <el-icon class="metric-icon"><ChatDotRound /></el-icon>
         <div><p>最近面试成绩</p><strong>{{ latestInterview?.totalScore ?? '—' }}<small v-if="latestInterview?.totalScore">分</small></strong></div>
         <em>{{ latestInterview ? formatDate(latestInterview.createTime) : '等待首次面试' }}</em>
       </article>
       <article class="metric-card">
-        <el-icon class="metric-icon blue"><TrendCharts /></el-icon>
+        <el-icon class="metric-icon"><TrendCharts /></el-icon>
         <div><p>成长任务</p><strong>{{ statistics.processing }}<small>项</small></strong></div>
         <em>正在进行中</em>
       </article>
     </section>
 
     <section class="section-grid two-column dashboard-main">
-      <article class="surface-card radar-panel">
+      <article class="surface-card roadmap-panel">
         <div class="card-header">
-          <div><h2>我的能力画像</h2><p>基于最近的技能与能力评分</p></div>
-          <button class="text-link" @click="router.push('/ability')">查看详情 <el-icon><ArrowRight /></el-icon></button>
+          <div><h2>职业成长路线</h2><p>{{ plan ? '规划 V' + plan.version : '等待生成规划' }}</p></div>
+          <button class="text-link" @click="router.push('/career/plan')">查看规划 <el-icon><ArrowRight /></el-icon></button>
         </div>
-        <AbilityRadar :data="radar" :height="310" />
+        <div v-if="roadmap.length" class="mini-roadmap">
+          <div v-for="(stage, index) in roadmap.slice(0, 4)" :key="stage.stage || index" class="mini-stage">
+            <span>{{ stage.stage || index + 1 }}</span>
+            <div><strong :title="stage.name">{{ stage.name }}</strong><small>{{ stage.duration || '持续推进' }}</small></div>
+          </div>
+        </div>
+        <div v-else class="empty-panel compact">
+          <div><el-icon class="empty-icon"><TrendCharts /></el-icon><strong>职业路线等待生成</strong><span>完善画像后即可开启个性化规划。</span></div>
+        </div>
       </article>
 
       <article class="surface-card tasks-panel">
@@ -171,12 +189,19 @@ async function changeTaskStatus(task: CareerTask, status: number) {
     </section>
 
     <article class="advice-card">
-      <el-icon class="advice-spark"><MagicStick /></el-icon>
-      <div><p>AI 今日建议</p><strong>{{ advice }}</strong></div>
-      <button @click="router.push('/career/chat')">和 AI 规划师聊聊 <el-icon><ArrowRight /></el-icon></button>
+      <el-icon class="advice-icon"><Compass /></el-icon>
+      <div><p>今日建议</p><strong>{{ advice }}</strong></div>
+      <button @click="router.push('/career/chat')">与职业规划师讨论 <el-icon><ArrowRight /></el-icon></button>
     </article>
 
     <section class="section-grid two-column dashboard-bottom">
+      <article class="surface-card radar-panel">
+        <div class="card-header">
+          <div><h2>我的能力画像</h2><p>基于最近的技能与能力评分</p></div>
+          <button class="text-link" @click="router.push('/ability')">查看详情 <el-icon><ArrowRight /></el-icon></button>
+        </div>
+        <AbilityRadar :data="radar" :height="310" />
+      </article>
       <article class="surface-card recent-panel">
         <div class="card-header"><div><h2>最近一次模拟面试</h2><p>持续练习，也持续复盘</p></div></div>
         <div v-if="latestInterview" class="recent-interview">
@@ -193,52 +218,41 @@ async function changeTaskStatus(task: CareerTask, status: number) {
         </div>
       </article>
 
-      <article class="surface-card roadmap-panel">
-        <div class="card-header">
-          <div><h2>职业成长路线</h2><p>{{ plan ? '规划 V' + plan.version : '等待生成规划' }}</p></div>
-          <button class="text-link" @click="router.push('/career/plan')">查看规划 <el-icon><ArrowRight /></el-icon></button>
-        </div>
-        <div v-if="roadmap.length" class="mini-roadmap">
-          <div v-for="(stage, index) in roadmap.slice(0, 4)" :key="stage.stage || index" class="mini-stage">
-            <span>{{ stage.stage || index + 1 }}</span>
-            <div><strong :title="stage.name">{{ stage.name }}</strong><small>{{ stage.duration || '持续推进' }}</small></div>
-          </div>
-        </div>
-        <div v-else class="empty-panel compact">
-          <div><el-icon class="empty-icon"><TrendCharts /></el-icon><strong>职业路线等待生成</strong><span>完善画像后即可开启个性化规划。</span></div>
-        </div>
-      </article>
     </section>
   </div>
 </template>
 
 <style scoped>
-.dashboard-hero {
+.dashboard-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 30px;
-  margin-bottom: 24px;
+  gap: 24px;
+  margin-bottom: 22px;
 }
 
-.dashboard-hero h1 { margin: 0; font-size: 28px; }
-.dashboard-hero h1 .el-icon { margin-left: 5px; color: #f2a93b; font-size: 24px; vertical-align: -3px; }
-.dashboard-hero > div > p:last-child { margin: 8px 0 0; color: var(--muted); }
+.dashboard-heading h1 { margin: 0; color: var(--text); font-size: 28px; line-height: 1.35; }
+.dashboard-heading p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.dashboard-heading .el-button { margin-top: 2px; border-color: var(--line); border-radius: 7px; color: var(--primary-dark); }
 
-.goal-card {
-  min-width: 310px;
-  padding: 18px 22px;
-  border: 1px solid #e2e4fa;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #f8f8ff, #eef0ff);
+.goal-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.75fr);
+  overflow: hidden;
+  margin-bottom: 14px;
+  border-left: 4px solid var(--primary);
 }
 
-.goal-card span,
-.goal-card strong { display: block; }
-.goal-card span { color: var(--muted); font-size: 12px; }
-.goal-card strong { margin: 7px 0; font-size: 17px; }
+.goal-feature-main,
+.goal-feature-next { min-width: 0; padding: 22px 25px; }
+.goal-feature-main h2 { margin: 8px 0; color: var(--primary-dark); font-size: 23px; line-height: 1.4; overflow-wrap: anywhere; }
+.goal-feature-main p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.goal-feature-next { display: flex; flex-direction: column; align-items: flex-start; border-left: 1px solid var(--line); background: #f9fbff; }
+.goal-feature-next strong { margin: 9px 0 5px; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.goal-feature-next small { margin-bottom: 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.goal-feature-next .el-button { margin-top: auto; border-radius: 7px; }
+.section-label { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
 
-.goal-card button,
 .text-link,
 .panel-footer-link,
 .advice-card button {
@@ -250,7 +264,6 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   font-weight: 700;
 }
 
-.goal-card button,
 .text-link,
 .advice-card button {
   display: inline-flex;
@@ -260,39 +273,36 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 17px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
 }
 
 .metric-card {
   display: grid;
-  grid-template-columns: 45px 1fr;
-  gap: 13px;
-  padding: 20px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  padding: 17px 18px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 8px 25px rgba(44, 48, 90, 0.045);
 }
 
 .metric-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  border-radius: 13px;
-  font-size: 21px;
+  border-radius: 7px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 18px;
 }
 
-.metric-icon.purple { color: #655bd9; background: #f0efff; }
-.metric-icon.green { color: #20966c; background: #eaf8f2; }
-.metric-icon.orange { color: #dd8430; background: #fff3e7; }
-.metric-icon.blue { color: #3a83d5; background: #eaf4ff; }
 .metric-card p { margin: 0 0 5px; color: var(--muted); font-size: 12px; }
-.metric-card strong { font-size: 26px; }
+.metric-card strong { color: var(--primary-dark); font-size: 26px; line-height: 1.2; }
 .metric-card small { margin-left: 3px; font-size: 13px; }
-.metric-card em { grid-column: 1 / -1; color: #9a9eb0; font-size: 11px; font-style: normal; }
+.metric-card em { grid-column: 1 / -1; color: var(--muted); font-size: 11px; font-style: normal; }
 
 .radar-panel,
 .tasks-panel,
@@ -321,36 +331,38 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   text-align: left;
 }
 
+.panel-footer-link:hover,
+.text-link:hover { color: var(--primary-dark); }
+
 .panel-footer-link .el-icon { float: right; }
 
 .advice-card {
   display: grid;
-  grid-template-columns: 46px 1fr auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
   gap: 15px;
-  margin: 20px 0;
-  padding: 19px 22px;
-  border: 1px solid #dadcf8;
-  border-radius: 15px;
-  color: #343762;
-  background: linear-gradient(90deg, #f1f1ff, #fafaff 60%, #f3f6ff);
+  margin: 22px 0;
+  padding: 17px 20px;
+  border: 1px solid #cadcf5;
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--primary-soft);
 }
 
-.advice-spark {
+.advice-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  border-radius: 14px;
-  color: #fff;
-  background: linear-gradient(135deg, #5c60dc, #8b75e9);
-  box-shadow: 0 8px 18px rgba(89, 88, 207, 0.2);
-  font-size: 21px;
+  border-radius: 7px;
+  color: var(--primary);
+  background: #fff;
+  font-size: 19px;
 }
 
-.advice-card p { margin: 0 0 4px; color: var(--primary); font-size: 12px; font-weight: 800; }
+.advice-card p { margin: 0 0 4px; color: var(--primary-dark); font-size: 12px; font-weight: 700; }
 .advice-card strong { font-size: 13px; font-weight: 500; line-height: 1.65; }
-.advice-card button { padding: 9px 13px; border: 1px solid #cfd2f6; border-radius: 9px; background: #fff; }
+.advice-card button { padding: 9px 13px; border: 1px solid #bad0ef; border-radius: 7px; background: #fff; white-space: nowrap; }
 
 .recent-interview {
   display: grid;
@@ -365,7 +377,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   width: 84px;
   height: 84px;
   place-content: center;
-  border: 7px solid #e8e9ff;
+  border: 7px solid #e1ebf9;
   border-top-color: var(--primary);
   border-radius: 50%;
   text-align: center;
@@ -381,7 +393,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .mini-roadmap {
   display: grid;
   width: 100%;
-  min-height: 145px;
+  min-height: 230px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
@@ -394,7 +406,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   height: 1px;
   top: 16px;
   right: -20%;
-  background: #d9dbec;
+  background: #ccdaeb;
   content: '';
 }
 
@@ -439,10 +451,12 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 }
 
 @media (max-width: 720px) {
-  .dashboard-hero { align-items: stretch; flex-direction: column; }
-  .goal-card { min-width: 0; }
+  .dashboard-heading { align-items: stretch; flex-direction: column; }
+  .dashboard-heading .el-button { align-self: flex-start; }
+  .goal-feature { grid-template-columns: 1fr; }
+  .goal-feature-next { border-top: 1px solid var(--line); border-left: 0; }
   .metrics-grid { grid-template-columns: 1fr; }
-  .advice-card { grid-template-columns: 42px 1fr; }
+  .advice-card { grid-template-columns: 38px 1fr; }
   .advice-card button { grid-column: 2; justify-self: start; }
   .recent-interview { grid-template-columns: 80px 1fr; }
   .recent-interview > .el-button { grid-column: 2; justify-self: start; }

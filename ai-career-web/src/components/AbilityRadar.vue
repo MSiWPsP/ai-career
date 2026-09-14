@@ -26,16 +26,16 @@ function render() {
   if (!chartRef.value || props.data.indicators.length === 0) return
   chart ||= init(chartRef.value)
   const option: EChartsCoreOption = {
-    color: ['#5b5edc'],
+    color: ['#1d4ed8'],
     tooltip: {},
     radar: {
       radius: '66%',
       splitNumber: 4,
       indicator: props.data.indicators,
-      axisName: { color: '#555a70', fontSize: 12 },
-      splitArea: { areaStyle: { color: ['#fbfbff', '#f5f6ff'] } },
-      splitLine: { lineStyle: { color: '#e2e4f2' } },
-      axisLine: { lineStyle: { color: '#d9dcec' } },
+      axisName: { color: '#5c6b7b', fontSize: 12 },
+      splitArea: { areaStyle: { color: ['#ffffff', '#f5f8fc'] } },
+      splitLine: { lineStyle: { color: '#dce5ef' } },
+      axisLine: { lineStyle: { color: '#dce5ef' } },
     },
     series: [
       {
@@ -43,7 +43,7 @@ function render() {
         data: [{ name: props.name, value: props.data.values }],
         symbolSize: 6,
         lineStyle: { width: 2.5 },
-        areaStyle: { color: 'rgba(91, 94, 220, 0.2)' },
+        areaStyle: { color: 'rgba(29, 78, 216, 0.16)' },
       },
     ],
   }
