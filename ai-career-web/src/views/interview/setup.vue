@@ -135,17 +135,17 @@ async function startInterview() {
 </template>
 
 <style scoped>
-.ready-tag { padding: 8px 13px; border-radius: 999px; color: var(--primary); background: var(--primary-soft); font-size: 12px; font-weight: 700; }
+.ready-tag { padding: 8px 13px; border-radius: 7px; color: var(--primary); background: var(--primary-soft); font-size: 12px; font-weight: 700; }
 .context-alert { margin-bottom: 18px; }
 .setup-grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 20px; }
 .config-card { padding: 28px 32px; }
 .config-head { display: flex; gap: 15px; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
-.interviewer-avatar { display: grid; width: 48px; height: 48px; flex: 0 0 48px; place-items: center; border-radius: 15px; color: #fff; background: linear-gradient(135deg, #5559d8, #8470e5); font-size: 13px; font-weight: 800; }
+.interviewer-avatar { display: grid; width: 48px; height: 48px; flex: 0 0 48px; place-items: center; border: 1px solid #c7d9f4; border-radius: 10px; color: var(--primary); background: var(--primary-soft); font-size: 20px; }
 .config-head h2 { margin: 1px 0 6px; font-size: 19px; }
 .config-head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .choice-grid { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 12px; }
 .choice-grid button { padding: 17px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; text-align: left; }
-.choice-grid button.active { border-color: #9295ea; background: #f6f6ff; box-shadow: inset 0 0 0 1px #9295ea; }
+.choice-grid button.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
 .choice-grid strong,
 .choice-grid small { display: block; }
 .choice-grid small { margin-top: 5px; color: var(--muted); }
@@ -163,7 +163,7 @@ async function startInterview() {
 .skill-preview > div { display: grid; grid-template-columns: 85px 1fr 28px; align-items: center; gap: 10px; font-size: 12px; }
 .skill-preview strong { color: var(--primary); text-align: right; }
 .skills-empty { display: block !important; padding: 18px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); text-align: center; }
-.tips { margin-top: 25px; padding: 17px; border-radius: 12px; background: #f8f8fb; }
+.tips { margin-top: 25px; padding: 17px; border-radius: 9px; background: #f4f8fd; }
 .tips strong { font-size: 12px; }
 .tips p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
 @media (max-width: 980px) { .setup-grid { grid-template-columns: 1fr; } }

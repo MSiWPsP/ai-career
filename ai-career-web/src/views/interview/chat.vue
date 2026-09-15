@@ -147,7 +147,7 @@ async function scrollToBottom() {
 .interview-room { display: flex; min-height: calc(100vh - 128px); flex-direction: column; overflow: hidden; }
 .interview-bar { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 25px; padding: 17px 22px; border-bottom: 1px solid var(--line); }
 .interview-bar > div:first-child { display: flex; align-items: center; gap: 11px; }
-.ai-avatar { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #5559d8, #806ce4); font-size: 12px; font-weight: 800; }
+.ai-avatar { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid #c7d9f4; border-radius: 9px; color: var(--primary); background: var(--primary-soft); font-size: 18px; }
 .interview-bar strong { font-size: 14px; }
 .interview-bar p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 .interview-progress { text-align: right; }
@@ -155,15 +155,15 @@ async function scrollToBottom() {
 .interview-progress strong { display: block; }
 .interview-progress span { color: var(--muted); font-size: 10px; }
 .interview-progress strong { margin-top: 4px; font-size: 13px; }
-.message-area { flex: 1; overflow-y: auto; padding: 28px; background: #fafafe; }
+.message-area { flex: 1; overflow-y: auto; padding: 28px; background: #f8fbff; }
 .message { display: flex; gap: 12px; max-width: 78%; margin-bottom: 24px; }
-.message > span { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 10px; color: #fff; background: var(--primary); font-size: 11px; font-weight: 700; }
+.message > span { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border: 1px solid #c7d9f4; border-radius: 8px; color: var(--primary); background: var(--primary-soft); font-size: 11px; font-weight: 700; }
 .message > div { padding: 14px 16px; border: 1px solid var(--line); border-radius: 4px 14px 14px; background: #fff; }
 .message small { color: var(--muted); }
 .message p { margin: 6px 0 0; line-height: 1.75; }
 .message.user { margin-left: auto; flex-direction: row-reverse; }
-.message.user > span { background: #2e9c77; }
-.message.user > div { border-radius: 14px 4px 14px 14px; background: #eff9f5; }
+.message.user > span { border-color: var(--line); color: var(--primary-dark); background: #edf2f7; }
+.message.user > div { border-color: #cbdcf4; border-radius: 12px 4px 12px 12px; background: var(--primary-soft); }
 .answer-box { padding: 16px 20px; border-top: 1px solid var(--line); background: #fff; }
 .answer-box > div { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
 .answer-box small { color: var(--muted); }
