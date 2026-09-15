@@ -134,18 +134,34 @@ async function switchMode() {
 
 <style scoped>
 .login-page {
+  position: relative;
   display: grid;
   min-height: 100vh;
   grid-template-columns: minmax(460px, 1.05fr) minmax(420px, 0.95fr);
-  background: #fff;
+  overflow: hidden;
+  background-color: #eff6ff;
+  background-image: url('../../assets/login-background.jpg');
+  background-position: left center;
+  background-size: cover;
+}
+
+.login-page::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(7 38 91 / 18%) 0%, rgb(18 76 151 / 5%) 48%, rgb(244 249 255 / 12%) 100%);
+  content: '';
+  pointer-events: none;
 }
 
 .login-hero {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   padding: clamp(56px, 8vw, 120px);
   color: #fff;
-  background: #163b70;
+  background: linear-gradient(90deg, rgb(6 38 92 / 60%) 0%, rgb(11 65 139 / 22%) 66%, transparent 100%);
 }
 
 .hero-content {
@@ -181,6 +197,7 @@ async function switchMode() {
   font-size: clamp(36px, 3.7vw, 54px);
   line-height: 1.3;
   letter-spacing: -1px;
+  text-shadow: 0 2px 18px rgb(5 31 75 / 24%);
 }
 
 .hero-desc {
@@ -217,13 +234,20 @@ async function switchMode() {
 
 .login-panel {
   position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   padding: 64px;
 }
 
 .form-wrap {
-  width: min(100%, 400px);
+  width: min(100%, 420px);
+  padding: 40px;
+  border: 1px solid rgb(191 219 254 / 78%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 28px 72px rgb(23 49 92 / 15%);
+  backdrop-filter: blur(18px);
 }
 
 .form-wrap h2 {
@@ -272,8 +296,9 @@ async function switchMode() {
 .copyright {
   position: absolute;
   bottom: 25px;
-  color: #8493a5;
+  color: #61748a;
   font-size: 11px;
+  text-shadow: 0 1px 2px rgb(255 255 255 / 80%);
 }
 
 :deep(.el-form-item__label) {
@@ -289,11 +314,23 @@ async function switchMode() {
 @media (max-width: 880px) {
   .login-page {
     grid-template-columns: 1fr;
+    overflow: visible;
+    background: #f5f8fc;
+  }
+
+  .login-page::before {
+    display: none;
   }
 
   .login-hero {
     min-height: 350px;
     padding: 50px 9vw;
+    background-color: #123b76;
+    background-image:
+      linear-gradient(90deg, rgb(5 38 91 / 68%) 0%, rgb(14 72 150 / 25%) 72%, rgb(239 246 255 / 8%) 100%),
+      url('../../assets/login-background.jpg');
+    background-position: left center;
+    background-size: cover;
   }
 
   .login-brand {
@@ -312,6 +349,16 @@ async function switchMode() {
   .login-panel {
     min-height: 590px;
     padding: 55px 24px 80px;
+    background: #fff;
+  }
+
+  .form-wrap {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 }
 
