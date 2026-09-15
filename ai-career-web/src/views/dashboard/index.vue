@@ -16,6 +16,7 @@ import { getProfile } from '../../api/profile'
 import { getTaskStatistics, getTasks, updateTaskStatus } from '../../api/task'
 import { getCurrentUser } from '../../api/user'
 import AbilityRadar from '../../components/AbilityRadar.vue'
+import AgentAvatar from '../../components/AgentAvatar.vue'
 import TaskCard from '../../components/TaskCard.vue'
 import type {
   AbilityRadar as AbilityRadarData,
@@ -51,6 +52,24 @@ const greeting = computed(() => {
 
 const roadmap = computed(() => parseJsonField<RoadmapStage[]>(plan.value?.roadmap, []))
 const nextTask = computed(() => tasks.value.find((task) => task.status === 1) ?? tasks.value.find((task) => task.status === 0))
+
+const abilitySummary = computed(() => {
+  const items = radar.value.indicators.map((indicator, index) => ({
+    name: indicator.name,
+    score: radar.value.values[index] ?? 0,
+  }))
+  if (!items.length) return undefined
+  return {
+    average: Math.round(items.reduce((total, item) => total + item.score, 0) / items.length),
+    strongest: items.reduce((best, item) => item.score > best.score ? item : best),
+    weakest: items.reduce((weakest, item) => item.score < weakest.score ? item : weakest),
+  }
+})
+
+const interviewScoreStyle = computed(() => {
+  const score = Math.max(0, Math.min(100, latestInterview.value?.totalScore ?? 0))
+  return { background: `conic-gradient(#67e8f9 0 ${score}%, rgb(255 255 255 / 18%) ${score}% 100%)` }
+})
 
 const advice = computed(() => {
   if (!profile.value?.targetPosition) {
@@ -165,6 +184,9 @@ async function changeTaskStatus(task: CareerTask, status: number) {
                 <small>{{ stage.duration || '持续推进' }}</small>
               </div>
               <p>{{ stage.goal || stage.topics?.slice(0, 3).join(' · ') || '围绕阶段目标持续完成对应成长任务。' }}</p>
+              <div v-if="stage.topics?.length" class="mini-stage-topics">
+                <span v-for="topic in stage.topics.slice(0, 3)" :key="topic">{{ topic }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -204,14 +226,37 @@ async function changeTaskStatus(task: CareerTask, status: number) {
       <article class="surface-card radar-panel">
         <div class="card-header">
           <div><h2>我的能力画像</h2><p>基于最近的技能与能力评分</p></div>
-          <button class="text-link" @click="router.push('/ability')">查看详情 <el-icon><ArrowRight /></el-icon></button>
+          <div class="ability-header-actions">
+            <span v-if="abilitySummary" class="ability-live"><i />动态画像</span>
+            <button class="text-link" @click="router.push('/ability')">查看详情 <el-icon><ArrowRight /></el-icon></button>
+          </div>
         </div>
-        <AbilityRadar :data="radar" :height="310" />
+        <div class="ability-dashboard-body" :class="{ 'is-empty': !abilitySummary }">
+          <div class="radar-visual"><AbilityRadar :data="radar" :height="310" /></div>
+          <aside v-if="abilitySummary" class="ability-insights">
+            <div class="ability-average">
+              <span>综合均值</span>
+              <strong>{{ abilitySummary.average }}<small>分</small></strong>
+              <i><b :style="{ width: abilitySummary.average + '%' }" /></i>
+            </div>
+            <div class="ability-insight is-strong">
+              <span>当前优势</span>
+              <strong>{{ abilitySummary.strongest.name }}</strong>
+              <small>{{ abilitySummary.strongest.score }} 分</small>
+            </div>
+            <div class="ability-insight is-focus">
+              <span>优先提升</span>
+              <strong>{{ abilitySummary.weakest.name }}</strong>
+              <small>{{ abilitySummary.weakest.score }} 分</small>
+            </div>
+          </aside>
+        </div>
       </article>
       <article class="surface-card recent-panel">
         <div class="card-header"><div><h2>最近一次模拟面试</h2><p>持续练习，也持续复盘</p></div></div>
         <div v-if="latestInterview" class="recent-interview">
-          <div class="score-ring"><strong>{{ latestInterview.totalScore ?? '—' }}</strong><span>综合评分</span></div>
+          <AgentAvatar class="interview-watermark" role="interviewer" :size="176" aria-hidden="true" />
+          <div class="score-ring" :style="interviewScoreStyle"><div><strong>{{ latestInterview.totalScore ?? '—' }}</strong><span>综合评分</span></div></div>
           <div class="interview-summary">
             <span class="soft-label">{{ interviewTypeLabel[latestInterview.interviewType] || latestInterview.interviewType }}</span>
             <h3>{{ latestInterview.targetPosition }}</h3>
@@ -229,6 +274,24 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 </template>
 
 <style scoped>
+.dashboard-page {
+  position: relative;
+  overflow-x: clip;
+}
+
+.dashboard-page::before {
+  position: absolute;
+  z-index: -1;
+  top: -120px;
+  right: -80px;
+  width: 520px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(96 165 250 / 16%) 0%, transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
 .dashboard-heading {
   display: flex;
   align-items: flex-start;
@@ -242,21 +305,43 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .dashboard-heading .el-button { margin-top: 2px; border-color: var(--line); border-radius: 7px; color: var(--primary-dark); }
 
 .goal-feature {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.75fr);
   overflow: hidden;
   margin-bottom: 14px;
-  border-left: 4px solid var(--primary);
+  border-color: #2563eb;
+  color: #fff;
+  background:
+    radial-gradient(circle at 70% 18%, rgb(103 232 249 / 22%) 0 2px, transparent 3px),
+    linear-gradient(120deg, #123b82 0%, #1d4ed8 55%, #287ee9 100%);
+  background-size: 34px 34px, auto;
+  box-shadow: 0 18px 40px rgb(29 78 216 / 18%);
+}
+
+.goal-feature::after {
+  position: absolute;
+  top: -92px;
+  right: 22%;
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 36px rgb(255 255 255 / 5%), 0 0 0 78px rgb(255 255 255 / 3%);
+  content: '';
+  pointer-events: none;
 }
 
 .goal-feature-main,
-.goal-feature-next { min-width: 0; padding: 22px 25px; }
-.goal-feature-main h2 { margin: 8px 0; color: var(--primary-dark); font-size: 23px; line-height: 1.4; overflow-wrap: anywhere; }
-.goal-feature-main p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
-.goal-feature-next { display: flex; flex-direction: column; align-items: flex-start; border-left: 1px solid var(--line); background: #f9fbff; }
+.goal-feature-next { position: relative; z-index: 1; min-width: 0; padding: 24px 27px; }
+.goal-feature-main h2 { margin: 8px 0; color: #fff; font-size: 25px; line-height: 1.4; overflow-wrap: anywhere; }
+.goal-feature-main p { margin: 0 0 16px; color: #dbeafe; font-size: 13px; line-height: 1.6; }
+.goal-feature-next { display: flex; flex-direction: column; align-items: flex-start; border-left: 1px solid rgb(255 255 255 / 20%); background: rgb(8 39 96 / 18%); backdrop-filter: blur(8px); }
 .goal-feature-next strong { margin: 9px 0 5px; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
-.goal-feature-next small { margin-bottom: 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.goal-feature-next .el-button { margin-top: auto; border-radius: 7px; }
+.goal-feature-next small { margin-bottom: 16px; color: #dbeafe; font-size: 12px; line-height: 1.5; }
+.goal-feature-next .el-button { margin-top: auto; border-color: #fff; border-radius: 7px; color: #1746a2; background: #fff; }
+.goal-feature .section-label { color: #bfdbfe; }
+.goal-feature .text-link { color: #fff; }
 .section-label { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
 
 .text-link,
@@ -285,13 +370,39 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 }
 
 .metric-card {
+  position: relative;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 10px;
+  overflow: hidden;
   padding: 17px 18px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
+  box-shadow: 0 5px 18px rgb(23 49 92 / 5%);
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
+}
+
+.metric-card::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  content: '';
+  opacity: .72;
+  transform: scaleX(.22);
+  transform-origin: left;
+  transition: transform var(--motion-normal) var(--ease-standard);
+}
+
+.metric-card:hover {
+  border-color: #b6cff5;
+  box-shadow: 0 16px 34px rgb(29 78 216 / 12%);
+  transform: translateY(-4px);
+}
+
+.metric-card:hover::after {
+  transform: scaleX(1);
 }
 
 .metric-icon {
@@ -301,9 +412,13 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   place-items: center;
   border-radius: 7px;
   color: var(--primary);
-  background: var(--primary-soft);
+  background: linear-gradient(145deg, #eff6ff, #dbeafe);
   font-size: 18px;
+  box-shadow: inset 0 0 0 1px rgb(147 197 253 / 24%);
+  transition: transform var(--motion-normal) var(--ease-standard);
 }
+
+.metric-card:hover .metric-icon { transform: scale(1.08) rotate(-4deg); }
 
 .metric-card p { margin: 0 0 5px; color: var(--muted); font-size: 12px; }
 .metric-card strong { color: var(--primary-dark); font-size: 26px; line-height: 1.2; }
@@ -315,6 +430,8 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .recent-panel,
 .roadmap-panel { padding: 22px 24px; }
 
+.dashboard-main { align-items: stretch; }
+
 .dashboard-bottom > .surface-card,
 .roadmap-panel,
 .mini-roadmap,
@@ -323,7 +440,26 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   min-width: 0;
 }
 
-.roadmap-panel { overflow: hidden; }
+.roadmap-panel {
+  position: relative;
+  display: flex;
+  min-height: 470px;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgb(239 246 255 / 70%), transparent 36%),
+    #fff;
+}
+
+.roadmap-panel::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #1d4ed8, #38bdf8 56%, transparent);
+  content: '';
+}
+
+.tasks-panel { min-height: 470px; }
 
 .dashboard-tasks :deep(.task-card) { grid-template-columns: 22px 1fr; padding: 13px 0; }
 .dashboard-tasks :deep(.task-card > .el-button),
@@ -343,6 +479,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .panel-footer-link .el-icon { float: right; }
 
 .advice-card {
+  position: relative;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
@@ -352,8 +489,13 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   border: 1px solid #cadcf5;
   border-radius: 10px;
   color: var(--text);
-  background: var(--primary-soft);
+  overflow: hidden;
+  background: linear-gradient(100deg, #eff6ff, #f8fbff 62%, #e7f4ff);
+  box-shadow: 0 8px 22px rgb(29 78 216 / 7%);
+  transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
+
+.advice-card:hover { box-shadow: 0 15px 32px rgb(29 78 216 / 13%); transform: translateY(-2px); }
 
 .advice-icon {
   display: grid;
@@ -370,61 +512,169 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .advice-card strong { font-size: 13px; font-weight: 500; line-height: 1.65; }
 .advice-card button { padding: 9px 13px; border: 1px solid #bad0ef; border-radius: 7px; background: #fff; white-space: nowrap; }
 
+.recent-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: #2563eb;
+  color: #fff;
+  background:
+    radial-gradient(circle at 100% 100%, rgb(56 189 248 / 26%), transparent 52%),
+    linear-gradient(145deg, #102f68, #1951b3 62%, #2378d8);
+  box-shadow: 0 16px 38px rgb(23 70 154 / 17%);
+}
+
+.recent-panel .card-header { position: relative; z-index: 2; }
+.recent-panel .card-header h2 { color: #fff; }
+.recent-panel .card-header p { color: #bfdbfe; }
+
 .recent-interview {
+  position: relative;
+  z-index: 1;
   display: grid;
-  min-height: 145px;
+  min-height: 250px;
   grid-template-columns: 88px 1fr auto;
   align-items: center;
   gap: 18px;
 }
 
 .score-ring {
+  position: relative;
   display: grid;
   width: 84px;
   height: 84px;
+  padding: 7px;
   place-content: center;
-  border: 7px solid #e1ebf9;
-  border-top-color: var(--primary);
   border-radius: 50%;
   text-align: center;
+  box-shadow: 0 0 30px rgb(103 232 249 / 30%);
+  animation: score-pop 520ms var(--ease-standard) both;
+}
+
+.score-ring::after {
+  position: absolute;
+  inset: 7px;
+  border-radius: inherit;
+  background: #123979;
+  content: '';
 }
 
 .score-ring strong,
-.score-ring span { display: block; }
-.score-ring strong { font-size: 24px; }
-.score-ring span { color: var(--muted); font-size: 10px; }
+.score-ring span { position: relative; z-index: 1; display: block; }
+.score-ring strong { color: #fff; font-size: 24px; }
+.score-ring span { color: #bfdbfe; font-size: 10px; }
+.interview-summary { position: relative; z-index: 2; }
 .interview-summary h3 { margin: 10px 0 6px; font-size: 16px; }
-.interview-summary p { margin: 0; color: var(--muted); font-size: 12px; }
+.interview-summary p { margin: 0; color: #bfdbfe; font-size: 12px; }
+.recent-panel .soft-label { border-color: rgb(255 255 255 / 18%); color: #dbeafe; background: rgb(255 255 255 / 12%); }
+.recent-panel .el-button { position: relative; z-index: 2; border-color: rgb(255 255 255 / 70%); color: #fff; background: rgb(255 255 255 / 10%); backdrop-filter: blur(6px); }
+.recent-panel .el-button:hover { border-color: #fff; color: #1746a2; background: #fff; }
+
+.interview-watermark {
+  position: absolute;
+  z-index: 0;
+  right: -48px;
+  bottom: -62px;
+  border: 8px solid rgb(255 255 255 / 32%);
+  opacity: .28;
+  box-shadow: 0 0 0 24px rgb(255 255 255 / 5%);
+  pointer-events: none;
+}
+
+@keyframes score-pop {
+  from { opacity: 0; transform: scale(.72) rotate(-20deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.radar-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 110%, rgb(59 130 246 / 14%), transparent 42%),
+    linear-gradient(135deg, #fff 0%, #f8fbff 100%);
+  box-shadow: 0 12px 34px rgb(23 49 92 / 8%);
+}
+
+.ability-header-actions { display: flex; align-items: center; gap: 15px; }
+.ability-live { display: inline-flex; align-items: center; gap: 6px; color: #14765f; font-size: 11px; font-weight: 700; }
+.ability-live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 5px rgb(34 197 94 / 10%); animation: live-pulse 2s ease-in-out infinite; }
+
+@keyframes live-pulse {
+  50% { box-shadow: 0 0 0 9px rgb(34 197 94 / 0%); }
+}
+
+.ability-dashboard-body {
+  display: grid;
+  min-height: 310px;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ability-dashboard-body.is-empty { grid-template-columns: 1fr; }
+.radar-visual { min-width: 0; }
+
+.ability-insights {
+  display: grid;
+  gap: 10px;
+}
+
+.ability-average,
+.ability-insight {
+  padding: 14px;
+  border: 1px solid #dbe7f5;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 76%);
+  box-shadow: 0 7px 18px rgb(23 49 92 / 5%);
+}
+
+.ability-average > span,
+.ability-insight > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+.ability-average strong { color: var(--primary-dark); font-size: 25px; }
+.ability-average strong small { margin-left: 2px; font-size: 11px; }
+.ability-average > i { display: block; height: 4px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #dbeafe; }
+.ability-average > i b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2563eb, #38bdf8); }
+.ability-insight { position: relative; overflow: hidden; padding-left: 18px; }
+.ability-insight::before { position: absolute; inset: 0 auto 0 0; width: 4px; background: #38bdf8; content: ''; }
+.ability-insight.is-focus::before { background: #2563eb; }
+.ability-insight strong { display: block; overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ability-insight small { display: block; margin-top: 5px; color: var(--primary); font-size: 11px; font-weight: 700; }
 
 .mini-roadmap {
-  display: grid;
+  display: flex;
   width: 100%;
-  min-height: 0;
-  grid-template-columns: 1fr;
-  align-items: start;
-  gap: 0;
+  min-height: 355px;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
 }
 
 .mini-stage {
   position: relative;
   display: grid;
+  min-height: 82px;
+  flex: 1;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 14px;
   min-width: 0;
-  padding: 13px 0;
+  padding: 13px 14px 13px 12px;
+  border: 1px solid #dce8f7;
+  border-radius: 11px;
   text-align: left;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 6px 16px rgb(23 49 92 / 4%);
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
 
-.mini-stage:first-child { padding-top: 2px; }
-.mini-stage:last-child { padding-bottom: 2px; }
+.mini-stage:hover { border-color: #9fc4f4; box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateX(5px); }
 
 .mini-stage:not(:last-child)::after {
   position: absolute;
-  width: 1px;
-  height: calc(100% - 30px);
-  top: 43px;
-  left: 18px;
-  background: #ccdaeb;
+  z-index: 2;
+  width: 2px;
+  height: 12px;
+  top: calc(100% + 1px);
+  left: 29px;
+  background: linear-gradient(#60a5fa, #bfdbfe);
   content: '';
 }
 
@@ -438,6 +688,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   background: var(--primary);
   font-size: 12px;
   font-weight: 700;
+  box-shadow: 0 7px 16px rgb(29 78 216 / 22%);
 }
 
 .mini-stage > div { min-width: 0; }
@@ -458,12 +709,16 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   white-space: nowrap;
 }
 .mini-stage p { display: -webkit-box; margin: 6px 0 0; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.mini-stage-topics { display: flex; gap: 5px; margin-top: 8px; overflow: hidden; }
+.mini-stage-topics span { overflow: hidden; padding: 3px 7px; border-radius: 5px; color: #1d4ed8; background: #eff6ff; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .compact { min-height: 145px; padding: 12px; font-size: 12px; }
 .compact .empty-icon { width: 44px; height: 44px; }
 
 @media (max-width: 1160px) {
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .two-column { grid-template-columns: 1fr; }
+  .roadmap-panel,
+  .tasks-panel { min-height: 0; }
 }
 
 @media (max-width: 720px) {
@@ -479,7 +734,16 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   .advice-card button { grid-column: 2; justify-self: start; }
   .recent-interview { grid-template-columns: 80px 1fr; }
   .recent-interview > .el-button { grid-column: 2; justify-self: start; }
+  .ability-dashboard-body { grid-template-columns: 1fr; }
+  .ability-insights { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
   .mini-stage-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
+
+@media (max-width: 520px) {
+  .ability-header-actions { align-items: flex-end; flex-direction: column; gap: 7px; }
+  .ability-insights { grid-template-columns: 1fr; }
+  .mini-stage { padding-right: 10px; }
+  .mini-stage-topics { display: none; }
 }
 </style>

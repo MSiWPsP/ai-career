@@ -153,13 +153,13 @@ function logout() {
   <div class="app-shell">
     <div v-if="sidebarOpen" class="sidebar-mask" @click="sidebarOpen = false" />
     <aside class="sidebar" :class="{ 'is-open': sidebarOpen }">
-      <div class="brand" @click="navigate('/dashboard')">
+      <button class="brand" type="button" aria-label="返回首页" @click="navigate('/dashboard')">
         <span class="brand-mark"><img src="/ai-career-mark.png" alt="" /></span>
         <span>
           <strong>AI职途</strong>
           <small>智能职业成长平台</small>
         </span>
-      </div>
+      </button>
 
       <nav class="nav-list">
         <button class="nav-item" :class="{ active: route.path === '/dashboard' }" :aria-current="route.path === '/dashboard' ? 'page' : undefined" @click="navigate('/dashboard')">
