@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { TrendCharts } from '@element-plus/icons-vue'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
@@ -18,23 +18,23 @@ function render() {
   if (!chartRef.value || !props.data.records.length) return
   chart ||= init(chartRef.value)
   const option: EChartsCoreOption = {
-    color: ['#5b5edc'],
+    color: ['#1d4ed8'],
     tooltip: { trigger: 'axis' },
     grid: { left: 38, right: 18, top: 25, bottom: 35 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
       data: props.data.records.map((item) => item.date),
-      axisLine: { lineStyle: { color: '#dfe1ea' } },
+      axisLine: { lineStyle: { color: '#dce5ef' } },
       axisTick: { show: false },
-      axisLabel: { color: '#8b8fa2', fontSize: 10 },
+      axisLabel: { color: '#5c6b7b', fontSize: 10 },
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 100,
-      splitLine: { lineStyle: { color: '#ececf3', type: 'dashed' } },
-      axisLabel: { color: '#8b8fa2', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#e5edf6', type: 'dashed' } },
+      axisLabel: { color: '#5c6b7b', fontSize: 10 },
     },
     series: [
       {
@@ -51,8 +51,8 @@ function render() {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(91, 94, 220, 0.28)' },
-              { offset: 1, color: 'rgba(91, 94, 220, 0.02)' },
+              { offset: 0, color: 'rgba(29, 78, 216, 0.22)' },
+              { offset: 1, color: 'rgba(29, 78, 216, 0.02)' },
             ],
           },
         },
@@ -62,11 +62,28 @@ function render() {
   chart.setOption(option, true)
 }
 
-watch(() => props.data, render, { deep: true })
-onMounted(() => {
+async function renderAfterDomUpdate() {
+  await nextTick()
   render()
+}
+
+watch(() => props.data, renderAfterDomUpdate, { deep: true, flush: 'post' })
+
+watch(chartRef, (element, previousElement) => {
+  if (previousElement) observer?.unobserve(previousElement)
+  if (!element) {
+    chart?.dispose()
+    chart = undefined
+    return
+  }
+  observer?.observe(element)
+  render()
+}, { flush: 'post' })
+
+onMounted(() => {
   observer = new ResizeObserver(() => chart?.resize())
   if (chartRef.value) observer.observe(chartRef.value)
+  void renderAfterDomUpdate()
 })
 onBeforeUnmount(() => {
   observer?.disconnect()

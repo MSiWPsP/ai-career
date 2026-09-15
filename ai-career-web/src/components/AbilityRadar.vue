@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { DataAnalysis } from '@element-plus/icons-vue'
 import { RadarChart } from 'echarts/charts'
 import { LegendComponent, RadarComponent, TooltipComponent } from 'echarts/components'
@@ -21,6 +21,18 @@ const props = withDefaults(
 const chartRef = ref<HTMLDivElement>()
 let chart: ECharts | undefined
 let observer: ResizeObserver | undefined
+
+const compactAbilities = computed(() => props.data.indicators.map((indicator, index) => {
+  const value = props.data.values[index] ?? 0
+  const maximum = indicator.max || 100
+  return {
+    name: indicator.name,
+    value,
+    percentage: Math.max(0, Math.min(100, Math.round(value / maximum * 100))),
+  }
+}))
+
+const useCompactBars = computed(() => compactAbilities.value.length > 0 && compactAbilities.value.length < 3)
 
 function render() {
   if (!chartRef.value || props.data.indicators.length === 0) return
@@ -50,12 +62,28 @@ function render() {
   chart.setOption(option, true)
 }
 
-watch(() => props.data, render, { deep: true })
+async function renderAfterDomUpdate() {
+  await nextTick()
+  render()
+}
+
+watch(() => props.data, renderAfterDomUpdate, { deep: true, flush: 'post' })
+
+watch(chartRef, (element, previousElement) => {
+  if (previousElement) observer?.unobserve(previousElement)
+  if (!element) {
+    chart?.dispose()
+    chart = undefined
+    return
+  }
+  observer?.observe(element)
+  render()
+}, { flush: 'post' })
 
 onMounted(() => {
-  render()
   observer = new ResizeObserver(() => chart?.resize())
   if (chartRef.value) observer.observe(chartRef.value)
+  void renderAfterDomUpdate()
 })
 
 onBeforeUnmount(() => {
@@ -66,7 +94,25 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    v-if="data.indicators.length"
+    v-if="useCompactBars"
+    class="compact-abilities"
+    :style="{ height: height + 'px' }"
+  >
+    <div class="compact-list">
+      <div v-for="ability in compactAbilities" :key="ability.name" class="compact-item">
+        <div class="compact-heading">
+          <strong>{{ ability.name }}</strong>
+          <span>{{ ability.value }} 分</span>
+        </div>
+        <div class="compact-track">
+          <span :style="{ width: ability.percentage + '%' }" />
+        </div>
+      </div>
+      <small>能力维度达到 3 项后，将自动切换为雷达图展示</small>
+    </div>
+  </div>
+  <div
+    v-else-if="data.indicators.length"
     ref="chartRef"
     class="radar-chart"
     :style="{ height: height + 'px' }"
@@ -81,6 +127,63 @@ onBeforeUnmount(() => {
 <style scoped>
 .radar-chart {
   width: 100%;
+}
+
+.compact-abilities {
+  display: grid;
+  width: 100%;
+  place-items: center;
+}
+
+.compact-list {
+  display: grid;
+  width: min(100%, 430px);
+  gap: 22px;
+}
+
+.compact-list > small {
+  color: var(--muted);
+  text-align: center;
+}
+
+.compact-item {
+  display: grid;
+  gap: 9px;
+}
+
+.compact-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.compact-heading strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-heading span {
+  flex: none;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.compact-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef7;
+}
+
+.compact-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
 }
 
 .chart-empty {

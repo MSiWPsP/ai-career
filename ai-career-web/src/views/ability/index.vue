@@ -25,6 +25,10 @@ const strongest = computed(() => {
   return entries.sort((a, b) => b[1] - a[1])[0]
 })
 
+const abilityChartTitle = computed(() => radar.value.indicators.length > 0 && radar.value.indicators.length < 3
+  ? '当前能力概览'
+  : '当前能力雷达')
+
 onMounted(async () => {
   const [currentData, radarData, historyData] = await Promise.all([
     getCurrentAbilities(),
@@ -69,7 +73,7 @@ function sourceLabel(source: string) {
 
     <section class="ability-grid">
       <article class="surface-card chart-card">
-        <div class="card-header"><div><h2>当前能力雷达</h2><p>最近一次有效评分</p></div></div>
+        <div class="card-header"><div><h2>{{ abilityChartTitle }}</h2><p>最近一次有效评分</p></div></div>
         <AbilityRadar :data="radar" :height="320" />
       </article>
       <article class="surface-card chart-card">

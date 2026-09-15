@@ -159,7 +159,13 @@ async function changeTaskStatus(task: CareerTask, status: number) {
         <div v-if="roadmap.length" class="mini-roadmap">
           <div v-for="(stage, index) in roadmap.slice(0, 4)" :key="stage.stage || index" class="mini-stage">
             <span>{{ stage.stage || index + 1 }}</span>
-            <div><strong :title="stage.name">{{ stage.name }}</strong><small>{{ stage.duration || '持续推进' }}</small></div>
+            <div>
+              <div class="mini-stage-heading">
+                <strong :title="stage.name">{{ stage.name }}</strong>
+                <small>{{ stage.duration || '持续推进' }}</small>
+              </div>
+              <p>{{ stage.goal || stage.topics?.slice(0, 3).join(' · ') || '围绕阶段目标持续完成对应成长任务。' }}</p>
+            </div>
           </div>
         </div>
         <div v-else class="empty-panel compact">
@@ -393,55 +399,65 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .mini-roadmap {
   display: grid;
   width: 100%;
-  min-height: 230px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-items: center;
-  gap: 8px;
+  min-height: 0;
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: 0;
 }
 
-.mini-stage { position: relative; text-align: center; }
+.mini-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+  padding: 13px 0;
+  text-align: left;
+}
+
+.mini-stage:first-child { padding-top: 2px; }
+.mini-stage:last-child { padding-bottom: 2px; }
+
 .mini-stage:not(:last-child)::after {
   position: absolute;
-  width: 35%;
-  height: 1px;
-  top: 16px;
-  right: -20%;
+  width: 1px;
+  height: calc(100% - 30px);
+  top: 43px;
+  left: 18px;
   background: #ccdaeb;
   content: '';
 }
 
 .mini-stage > span {
   display: grid;
-  width: 32px;
-  height: 32px;
-  margin: 0 auto 9px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border-radius: 50%;
   color: #fff;
   background: var(--primary);
   font-size: 12px;
+  font-weight: 700;
 }
 
-.mini-stage strong,
-.mini-stage small { display: block; }
+.mini-stage > div { min-width: 0; }
+.mini-stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; }
 .mini-stage strong {
-  display: -webkit-box;
-  min-height: 2.8em;
+  display: block;
   overflow: hidden;
-  font-size: 12px;
+  color: var(--text);
+  font-size: 13px;
   line-height: 1.4;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-.mini-stage small {
-  overflow: hidden;
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.mini-stage small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.mini-stage p { display: -webkit-box; margin: 6px 0 0; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .compact { min-height: 145px; padding: 12px; font-size: 12px; }
 .compact .empty-icon { width: 44px; height: 44px; }
 
@@ -461,11 +477,6 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   .recent-interview { grid-template-columns: 80px 1fr; }
   .recent-interview > .el-button { grid-column: 2; justify-self: start; }
 
-  .mini-roadmap {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px 12px;
-  }
-
-  .mini-stage:nth-child(2)::after { display: none; }
+  .mini-stage-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
 }
 </style>
