@@ -13,7 +13,6 @@ import {
   MoreFilled,
   Plus,
   RefreshRight,
-  Service,
   User,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -31,6 +30,7 @@ import {
 } from '../../api/career'
 import { getProfile } from '../../api/profile'
 import { getSkills } from '../../api/skill'
+import AgentAvatar from '../../components/AgentAvatar.vue'
 import { useCareerChatStore } from '../../stores/careerChat'
 import type { CareerChatSession, CareerPlan, UserProfile, UserSkill } from '../../types/api'
 import { renderMarkdown } from '../../utils/markdown'
@@ -354,7 +354,12 @@ function formatSessionTime(value?: string) {
 
 async function scrollToBottom() {
   await nextTick()
-  if (messageArea.value) messageArea.value.scrollTop = messageArea.value.scrollHeight
+  if (!messageArea.value) return
+  if (messages.value.length === 1 && messages.value[0]?.id === 'welcome') {
+    messageArea.value.scrollTop = 0
+    return
+  }
+  messageArea.value.scrollTop = messageArea.value.scrollHeight
 }
 
 async function handlePlanAction() {
@@ -380,14 +385,19 @@ async function handlePlanAction() {
     <section class="chat-layout">
       <article class="surface-card chat-card">
         <div class="chat-toolbar">
-          <div class="active-conversation">
-            <strong>{{ activeSession?.title || '新对话' }}</strong>
-            <small>{{ conversationArchived ? '已归档，只能查看历史消息' : '当前会话将自动保存' }}</small>
+          <div class="conversation-identity">
+            <AgentAvatar role="planner" :size="42" />
+            <div class="active-conversation">
+              <span>AI 职业规划师</span>
+              <strong>{{ activeSession?.title || '新对话' }}</strong>
+              <small>{{ conversationArchived ? '已归档，只能查看历史消息' : '当前会话将自动保存' }}</small>
+            </div>
           </div>
           <div class="chat-actions">
             <el-button :icon="Clock" :disabled="sending" @click="showSessions = true">会话记录</el-button>
             <el-button :icon="Plus" :disabled="sending" @click="createConversation">新建对话</el-button>
             <el-button
+              v-if="conversationId"
               text
               :icon="Delete"
               :disabled="!conversationId || sending"
@@ -400,9 +410,8 @@ async function handlePlanAction() {
 
         <div ref="messageArea" class="message-area">
           <article v-for="item in messages" :key="item.id" class="chat-message" :class="[item.role, item.status]">
-            <span class="message-avatar">
-              <el-icon><User v-if="item.role === 'user'" /><Service v-else /></el-icon>
-            </span>
+            <span v-if="item.role === 'user'" class="message-avatar"><el-icon><User /></el-icon></span>
+            <AgentAvatar v-else role="planner" :size="36" />
             <div class="message-bubble">
               <small v-if="item.role === 'assistant'">AI 职业规划师</small>
               <div
@@ -416,7 +425,7 @@ async function handlePlanAction() {
           </article>
 
           <article v-if="sending && messages[messages.length - 1]?.role !== 'assistant'" class="chat-message assistant pending-message">
-            <span class="message-avatar"><el-icon><Service /></el-icon></span>
+            <AgentAvatar role="planner" :size="36" />
             <div class="message-bubble">
               <small>AI 职业规划师</small>
               <div class="typing-dots"><i></i><i></i><i></i></div>
@@ -550,7 +559,9 @@ async function handlePlanAction() {
 .chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; height: clamp(620px, calc(100vh - 120px), 920px); height: clamp(620px, calc(100dvh - 120px), 920px); flex: 0 0 auto; gap: 16px; min-height: 0; }
 .chat-card { display: flex; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; }
 .chat-toolbar { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 20px; border-bottom: 1px solid var(--line); background: #fff; }
+.conversation-identity { display: flex; min-width: 0; align-items: center; gap: 11px; }
 .active-conversation { min-width: 0; }
+.active-conversation > span { display: block; margin-bottom: 2px; color: var(--primary); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .active-conversation strong,
 .active-conversation small { display: block; }
 .active-conversation strong { overflow: hidden; color: var(--text); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
@@ -559,6 +570,7 @@ async function handlePlanAction() {
 .chat-actions .el-button + .el-button { margin-left: 0; }
 .message-area { min-height: 0; flex: 1; overflow-y: auto; padding: 22px 24px 8px; background: #f8fbff; scroll-behavior: smooth; }
 .chat-message { display: flex; gap: 12px; max-width: 88%; margin-bottom: 18px; }
+.chat-message > :first-child { margin-top: 1px; }
 .message-avatar { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 1px solid #c7d9f4; border-radius: 9px; color: var(--primary); background: var(--primary-soft); }
 .message-bubble { padding: 14px 17px; border: 1px solid var(--line); border-radius: 4px 12px 12px; background: #fff; }
 .message-bubble small { color: var(--primary); font-weight: 700; }
@@ -653,5 +665,20 @@ async function handlePlanAction() {
 @keyframes cursor-blink { 50% { opacity: 0; } }
 @media (max-width: 1100px) { .chat-layout { grid-template-columns: minmax(0, 1fr) 230px; } }
 @media (max-width: 960px) { .chat-page { min-height: auto; } .chat-layout { grid-template-columns: 1fr; height: auto; } .chat-card { height: clamp(560px, calc(100dvh - 120px), 760px); } .portrait-card { width: 100%; } }
-@media (max-width: 600px) { .chat-toolbar { align-items: flex-start; flex-direction: column; } .chat-actions { width: 100%; flex-wrap: wrap; } .message-area { padding: 22px 16px 6px; } .chat-message { max-width: 94%; } .chat-input { margin-inline: 16px; } .quick-list { padding-inline: 16px 10px; } .input-meta small { max-width: 145px; } }
+@media (max-width: 600px) {
+  .chat-toolbar { align-items: flex-start; flex-direction: column; }
+  .conversation-identity { width: 100%; }
+  .chat-actions { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chat-actions .el-button { width: 100%; margin: 0; }
+  .message-area { padding: 22px 14px 6px; }
+  .chat-message { width: 100%; max-width: 100%; gap: 9px; }
+  .chat-message .message-bubble { min-width: 0; flex: 1; padding: 13px 14px; }
+  .chat-message.user { width: auto; max-width: 94%; }
+  .chat-input { margin-inline: 14px; }
+  .quick-list { padding-inline: 14px 10px; }
+  .quick-questions { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .quick-questions::-webkit-scrollbar { display: none; }
+  .quick-question { flex: 0 0 auto; }
+  .input-meta small { max-width: 145px; }
+}
 </style>

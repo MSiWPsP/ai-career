@@ -68,7 +68,7 @@ const priority = computed(() => {
   height: 22px;
   margin-top: 1px;
   place-items: center;
-  border: 2px solid #c9cce0;
+  border: 2px solid #c4d1df;
   border-radius: 7px;
   color: #fff;
   background: #fff;
@@ -92,7 +92,7 @@ const priority = computed(() => {
 }
 
 .completed h3 {
-  color: #8a8fa2;
+  color: var(--tertiary);
   text-decoration: line-through;
 }
 
@@ -106,7 +106,7 @@ const priority = computed(() => {
 .task-meta {
   display: flex;
   gap: 16px;
-  color: #999db0;
+  color: var(--tertiary);
   font-size: 12px;
 }
 

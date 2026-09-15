@@ -252,8 +252,8 @@ async function save() {
   align-items: center;
   gap: 13px;
   padding: 10px 16px;
-  border: 1px solid #e0e2f3;
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: #fff;
 }
 
@@ -295,8 +295,8 @@ async function save() {
 .skill-group {
   padding: 17px 20px;
   border: 1px solid var(--line);
-  border-radius: 13px;
-  background: #fafafe;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
 }
 
 .skill-group h3 { margin: 0 0 10px; font-size: 14px; }
@@ -306,7 +306,7 @@ async function save() {
   align-items: center;
   gap: 10px;
   min-height: 42px;
-  border-top: 1px dashed #e3e4ed;
+  border-top: 1px dashed #d9e2ec;
 }
 
 .skill-row > span { font-size: 13px; font-weight: 600; }
@@ -316,18 +316,18 @@ async function save() {
 .interest-card {
   padding: 24px 18px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: #fff;
   cursor: pointer;
   text-align: left;
-  transition: 0.2s ease;
+  transition: var(--motion-fast) var(--ease-standard);
 }
 
 .interest-card:hover,
 .interest-card.selected {
-  border-color: #8d8fe7;
-  background: #f7f7ff;
-  box-shadow: 0 10px 24px rgba(80, 82, 185, 0.09);
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.08);
   transform: translateY(-2px);
 }
 

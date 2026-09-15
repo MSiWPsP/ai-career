@@ -163,13 +163,14 @@ async function generateFirstPlan() {
   gap: 30px;
   padding: 30px 36px;
   background:
-    radial-gradient(circle at 90% 20%, rgba(117, 108, 232, 0.11), transparent 28%),
+    linear-gradient(90deg, rgba(239, 246, 255, .72), rgba(255, 255, 255, 0) 58%),
     #fff;
+  box-shadow: inset 4px 0 0 var(--primary), var(--shadow);
 }
 
 .plan-hero > div:first-child { max-width: 780px; }
 .plan-hero h2 { margin: 18px 0 10px; font-size: 28px; }
-.plan-hero p { margin: 0 0 18px; color: #656a80; line-height: 1.8; }
+.plan-hero p { margin: 0 0 18px; color: var(--muted); line-height: 1.8; }
 .plan-hero small { color: var(--muted); }
 .match-score { min-width: 160px; text-align: center; }
 .match-score span { display: block; margin-top: -15px; color: var(--muted); font-size: 12px; }
@@ -185,7 +186,7 @@ async function generateFirstPlan() {
 .advantage .card-header .el-icon { color: var(--success); background: var(--success-soft); }
 .weakness .card-header .el-icon { color: var(--warning); background: var(--warning-soft); }
 .insight-card ul { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }
-.insight-card li { position: relative; padding-left: 20px; color: #54596d; font-size: 13px; line-height: 1.6; }
+.insight-card li { position: relative; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .insight-card li::before { position: absolute; left: 0; color: var(--primary); content: '•'; }
 .muted-copy { color: var(--muted); font-size: 13px; }
 .roadmap-card,
@@ -205,7 +206,7 @@ async function generateFirstPlan() {
   cursor: pointer;
   text-align: left;
 }
-.version-list button.active { border-color: #9698eb; background: #f8f8ff; }
+.version-list button.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px rgba(29, 78, 216, .08); }
 .version-list span { grid-row: 1 / 3; color: var(--primary); font-size: 17px; font-weight: 800; }
 .version-list strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .version-list small { color: var(--muted); }

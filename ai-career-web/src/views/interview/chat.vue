@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { ChatDotRound, RefreshRight, Service } from '@element-plus/icons-vue'
+import { ChatDotRound, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { answerInterview, finishInterview, getInterview, getInterviewMessages } from '../../api/interview'
+import AgentAvatar from '../../components/AgentAvatar.vue'
 import type { InterviewDetail, InterviewMessage } from '../../types/api'
 import { difficultyLabel, interviewTypeLabel } from '../../utils/data'
 
@@ -104,7 +105,7 @@ async function scrollToBottom() {
 <template>
   <section class="surface-card interview-room" v-loading="loading">
     <header class="interview-bar">
-      <div><el-icon class="ai-avatar"><Service /></el-icon><div><strong>{{ detail?.targetPosition || 'AI 模拟面试' }}</strong><p>{{ interviewTypeLabel[detail?.interviewType || 'TECHNICAL'] }} · {{ difficultyLabel[detail?.difficulty || 'MEDIUM'] }}</p></div></div>
+      <div><AgentAvatar role="interviewer" :size="44" /><div><strong>{{ detail?.targetPosition || 'AI 模拟面试' }}</strong><p>AI 模拟面试官 · {{ interviewTypeLabel[detail?.interviewType || 'TECHNICAL'] }} · {{ difficultyLabel[detail?.difficulty || 'MEDIUM'] }}</p></div></div>
       <div class="interview-progress"><span>{{ statusText }}</span><strong>{{ detail?.questionCount || 0 }} / {{ detail?.maxQuestions || 0 }} 题</strong></div>
       <el-button type="danger" plain :loading="finishing" :disabled="!isActive" @click="endInterview">结束面试</el-button>
     </header>
@@ -115,7 +116,8 @@ async function scrollToBottom() {
       </el-alert>
       <template v-if="messages.length">
         <article v-for="item in messages" :key="item.id" class="message" :class="item.role">
-          <span><template v-if="item.role === 'user'">我</template><el-icon v-else><Service /></el-icon></span>
+          <span v-if="item.role === 'user'">我</span>
+          <AgentAvatar v-else role="interviewer" :size="36" />
           <div><small>{{ item.role === 'user' ? '你的回答' : 'AI 面试官' }}</small><p>{{ item.content }}</p></div>
         </article>
       </template>
@@ -124,7 +126,7 @@ async function scrollToBottom() {
         <div><small>你的回答</small><p>{{ pendingAnswer }}</p></div>
       </article>
       <article v-if="submitting" class="message assistant thinking-message">
-        <span><el-icon><Service /></el-icon></span>
+        <AgentAvatar role="interviewer" :size="36" />
         <div><small>AI 面试官正在分析你的回答</small><p class="thinking-dots"><i></i><i></i><i></i></p></div>
       </article>
       <div v-else-if="!messages.length && !loadError" class="empty-panel">
@@ -147,7 +149,6 @@ async function scrollToBottom() {
 .interview-room { display: flex; min-height: calc(100vh - 128px); flex-direction: column; overflow: hidden; }
 .interview-bar { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 25px; padding: 17px 22px; border-bottom: 1px solid var(--line); }
 .interview-bar > div:first-child { display: flex; align-items: center; gap: 11px; }
-.ai-avatar { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid #c7d9f4; border-radius: 9px; color: var(--primary); background: var(--primary-soft); font-size: 18px; }
 .interview-bar strong { font-size: 14px; }
 .interview-bar p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 .interview-progress { text-align: right; }
@@ -158,6 +159,7 @@ async function scrollToBottom() {
 .message-area { flex: 1; overflow-y: auto; padding: 28px; background: #f8fbff; }
 .message { display: flex; gap: 12px; max-width: 78%; margin-bottom: 24px; }
 .message > span { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border: 1px solid #c7d9f4; border-radius: 8px; color: var(--primary); background: var(--primary-soft); font-size: 11px; font-weight: 700; }
+.message > :first-child { margin-top: 1px; }
 .message > div { padding: 14px 16px; border: 1px solid var(--line); border-radius: 4px 14px 14px; background: #fff; }
 .message small { color: var(--muted); }
 .message p { margin: 6px 0 0; line-height: 1.75; }
@@ -173,4 +175,19 @@ async function scrollToBottom() {
 .thinking-dots i:nth-child(2) { animation-delay: .15s; }
 .thinking-dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes thinking { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+@media (max-width: 640px) {
+  .interview-room { min-height: calc(100dvh - 96px); }
+  .interview-bar { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 14px; }
+  .interview-bar > div:first-child { grid-column: 1 / -1; min-width: 0; }
+  .interview-bar > div:first-child > div { min-width: 0; }
+  .interview-bar > div:first-child strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .interview-progress { text-align: left; }
+  .message-area { padding: 20px 14px; }
+  .message { width: 100%; max-width: 100%; gap: 9px; }
+  .message > div { min-width: 0; flex: 1; padding: 13px 14px; }
+  .message.user { width: auto; max-width: 94%; }
+  .answer-box { padding: 14px; }
+  .answer-box > div { align-items: flex-end; gap: 12px; }
+  .answer-box small { line-height: 1.5; }
+}
 </style>

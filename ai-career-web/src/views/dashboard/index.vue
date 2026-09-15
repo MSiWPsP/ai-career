@@ -471,7 +471,10 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   .dashboard-heading .el-button { align-self: flex-start; }
   .goal-feature { grid-template-columns: 1fr; }
   .goal-feature-next { border-top: 1px solid var(--line); border-left: 0; }
-  .metrics-grid { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .metric-card { grid-template-columns: 34px minmax(0, 1fr); padding: 14px 12px; }
+  .metric-icon { width: 32px; height: 32px; }
+  .metric-card strong { font-size: 22px; }
   .advice-card { grid-template-columns: 38px 1fr; }
   .advice-card button { grid-column: 2; justify-self: start; }
   .recent-interview { grid-template-columns: 80px 1fr; }

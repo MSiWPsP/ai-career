@@ -162,29 +162,29 @@ function logout() {
       </div>
 
       <nav class="nav-list">
-        <button class="nav-item" :class="{ active: route.path === '/dashboard' }" @click="navigate('/dashboard')">
+        <button class="nav-item" :class="{ active: route.path === '/dashboard' }" :aria-current="route.path === '/dashboard' ? 'page' : undefined" @click="navigate('/dashboard')">
           <el-icon><House /></el-icon> 首页
         </button>
-        <button class="nav-item" :class="{ active: route.path === '/profile' }" @click="navigate('/profile')">
+        <button class="nav-item" :class="{ active: route.path === '/profile' }" :aria-current="route.path === '/profile' ? 'page' : undefined" @click="navigate('/profile')">
           <el-icon><UserFilled /></el-icon> 我的职业画像
         </button>
 
         <p class="nav-group">AI 助手</p>
-        <button class="nav-item" :class="{ active: route.path.startsWith('/career') }" @click="navigate('/career/chat')">
+        <button class="nav-item" :class="{ active: route.path.startsWith('/career') }" :aria-current="route.path.startsWith('/career') ? 'page' : undefined" @click="navigate('/career/chat')">
           <el-icon><Compass /></el-icon> AI职业规划师
         </button>
-        <button class="nav-item" :class="{ active: route.path.startsWith('/interview/setup') || route.path.startsWith('/interview/session') }" @click="navigate('/interview/setup')">
+        <button class="nav-item" :class="{ active: route.path.startsWith('/interview/setup') || route.path.startsWith('/interview/session') }" :aria-current="route.path.startsWith('/interview/setup') || route.path.startsWith('/interview/session') ? 'page' : undefined" @click="navigate('/interview/setup')">
           <el-icon><ChatDotRound /></el-icon> AI模拟面试官
         </button>
 
         <p class="nav-group">成长中心</p>
-        <button class="nav-item" :class="{ active: route.path === '/tasks' }" @click="navigate('/tasks')">
+        <button class="nav-item" :class="{ active: route.path === '/tasks' }" :aria-current="route.path === '/tasks' ? 'page' : undefined" @click="navigate('/tasks')">
           <el-icon><List /></el-icon> 我的学习计划
         </button>
-        <button class="nav-item" :class="{ active: route.path === '/ability' }" @click="navigate('/ability')">
+        <button class="nav-item" :class="{ active: route.path === '/ability' }" :aria-current="route.path === '/ability' ? 'page' : undefined" @click="navigate('/ability')">
           <el-icon><DataAnalysis /></el-icon> 能力画像
         </button>
-        <button class="nav-item" :class="{ active: route.path === '/interviews' || route.path.includes('/report') }" @click="navigate('/interviews')">
+        <button class="nav-item" :class="{ active: route.path === '/interviews' || route.path.includes('/report') }" :aria-current="route.path === '/interviews' || route.path.includes('/report') ? 'page' : undefined" @click="navigate('/interviews')">
           <el-icon><Tickets /></el-icon> 面试记录
         </button>
       </nav>

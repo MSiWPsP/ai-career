@@ -54,17 +54,17 @@ defineProps<{ stages: RoadmapStage[] }>()
   place-items: center;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, var(--primary), #7c73e8);
+  background: var(--primary);
   font-size: 13px;
   font-weight: 800;
-  box-shadow: 0 6px 15px rgba(85, 88, 217, 0.22);
+  box-shadow: 0 5px 14px rgba(29, 78, 216, 0.18);
 }
 
 .stage-marker i {
   width: 2px;
   min-height: 78px;
   flex: 1;
-  background: #e5e7f3;
+  background: #dbe5f1;
 }
 
 .stage-content {
@@ -106,8 +106,9 @@ defineProps<{ stages: RoadmapStage[] }>()
 .stage-topics span {
   padding: 5px 9px;
   border-radius: 7px;
-  color: #5e6278;
-  background: #f3f4f9;
+  border: 1px solid #dfe8f3;
+  color: var(--muted);
+  background: var(--surface-subtle);
   font-size: 11px;
 }
 </style>

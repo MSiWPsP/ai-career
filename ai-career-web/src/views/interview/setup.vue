@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Microphone, RefreshRight, Service } from '@element-plus/icons-vue'
+import { Microphone, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { startInterview as startInterviewRequest } from '../../api/interview'
 import { getProfile } from '../../api/profile'
 import { getSkills } from '../../api/skill'
+import AgentAvatar from '../../components/AgentAvatar.vue'
 import type { UserProfile, UserSkill } from '../../types/api'
 
 const loading = ref(true)
@@ -76,8 +77,8 @@ async function startInterview() {
     <section class="setup-grid">
       <article class="surface-card config-card">
         <div class="config-head">
-          <el-icon class="interviewer-avatar"><Service /></el-icon>
-          <div><h2>AI 模拟面试</h2><p>面试过程中不会实时展示评分，问题会根据你的回答动态调整。</p></div>
+          <AgentAvatar role="interviewer" :size="64" />
+          <div><span>INTERVIEWER / 01</span><h2>AI 模拟面试官</h2><p>面试过程中不会实时展示评分，问题会根据你的回答动态调整。</p></div>
         </div>
 
         <el-form :model="config" label-position="top" size="large">
@@ -140,7 +141,7 @@ async function startInterview() {
 .setup-grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 20px; }
 .config-card { padding: 28px 32px; }
 .config-head { display: flex; gap: 15px; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
-.interviewer-avatar { display: grid; width: 48px; height: 48px; flex: 0 0 48px; place-items: center; border: 1px solid #c7d9f4; border-radius: 10px; color: var(--primary); background: var(--primary-soft); font-size: 20px; }
+.config-head > div > span { display: block; margin-bottom: 5px; color: var(--primary); font-size: 10px; font-weight: 800; letter-spacing: .1em; }
 .config-head h2 { margin: 1px 0 6px; font-size: 19px; }
 .config-head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .choice-grid { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 12px; }
