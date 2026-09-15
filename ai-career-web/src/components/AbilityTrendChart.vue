@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<{ data: AbilityTrend; height?: number }>(
 const chartRef = ref<HTMLDivElement>()
 let chart: ECharts | undefined
 let observer: ResizeObserver | undefined
+let resizeFrame: number | undefined
 
 function render() {
   if (!chartRef.value || !props.data.records.length) return
@@ -81,11 +82,15 @@ watch(chartRef, (element, previousElement) => {
 }, { flush: 'post' })
 
 onMounted(() => {
-  observer = new ResizeObserver(() => chart?.resize())
+  observer = new ResizeObserver(() => {
+    if (resizeFrame) cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => chart?.resize())
+  })
   if (chartRef.value) observer.observe(chartRef.value)
   void renderAfterDomUpdate()
 })
 onBeforeUnmount(() => {
+  if (resizeFrame) cancelAnimationFrame(resizeFrame)
   observer?.disconnect()
   chart?.dispose()
 })

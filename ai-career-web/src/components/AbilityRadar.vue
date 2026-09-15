@@ -21,6 +21,7 @@ const props = withDefaults(
 const chartRef = ref<HTMLDivElement>()
 let chart: ECharts | undefined
 let observer: ResizeObserver | undefined
+let resizeFrame: number | undefined
 
 const compactAbilities = computed(() => props.data.indicators.map((indicator, index) => {
   const value = props.data.values[index] ?? 0
@@ -81,12 +82,16 @@ watch(chartRef, (element, previousElement) => {
 }, { flush: 'post' })
 
 onMounted(() => {
-  observer = new ResizeObserver(() => chart?.resize())
+  observer = new ResizeObserver(() => {
+    if (resizeFrame) cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => chart?.resize())
+  })
   if (chartRef.value) observer.observe(chartRef.value)
   void renderAfterDomUpdate()
 })
 
 onBeforeUnmount(() => {
+  if (resizeFrame) cancelAnimationFrame(resizeFrame)
   observer?.disconnect()
   chart?.dispose()
 })
