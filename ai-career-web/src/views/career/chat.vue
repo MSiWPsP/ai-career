@@ -631,7 +631,15 @@ async function handlePlanAction() {
 .quick-close:hover { color: var(--primary); background: var(--primary-soft); }
 .chat-input { margin: 12px 20px 20px; padding: 13px 14px; border: 1px solid #c9dbf4; border-radius: 11px; background: #fff; box-shadow: 0 8px 22px rgb(23 49 92 / 6%); }
 .chat-input:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.09), 0 12px 28px rgb(29 78 216 / 9%); }
-.chat-input :deep(.el-textarea__inner) { min-height: 54px !important; max-height: 220px; padding: 0; border: 0; box-shadow: none; }
+.chat-input :deep(.el-textarea__inner),
+.chat-input :deep(.el-textarea__inner:focus) {
+  min-height: 54px !important;
+  max-height: 220px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  box-shadow: none !important;
+}
 .chat-input > div { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
 .chat-input small { color: var(--muted); }
 .input-meta { display: flex; min-width: 0; align-items: center; gap: 8px; }
