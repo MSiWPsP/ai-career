@@ -461,7 +461,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 
 .tasks-panel { min-height: 470px; }
 
-.dashboard-tasks :deep(.task-card) { grid-template-columns: 22px 1fr; padding: 13px 0; }
+.dashboard-tasks :deep(.task-card) { grid-template-columns: 22px 1fr; padding: 13px 12px; }
 .dashboard-tasks :deep(.task-card > .el-button),
 .dashboard-tasks :deep(.task-title-row .el-tag) { display: none; }
 

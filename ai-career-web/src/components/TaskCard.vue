@@ -54,12 +54,23 @@ const priority = computed(() => {
   grid-template-columns: 24px 1fr auto;
   align-items: start;
   gap: 14px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+  padding: 16px;
+  border: 1px solid #dbe6f3;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #fff, #f8fbff);
+  box-shadow: 0 6px 18px rgb(23 49 92 / 4%);
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
+}
+
+.task-card:hover {
+  border-color: #a8c7f1;
+  box-shadow: 0 13px 28px rgb(29 78 216 / 10%);
+  transform: translateX(4px);
 }
 
 .task-card:last-child {
-  border-bottom: 0;
+  margin-bottom: 0;
 }
 
 .task-check {
@@ -79,6 +90,8 @@ const priority = computed(() => {
   border-color: var(--success);
   background: var(--success);
 }
+
+.task-card.completed { background: linear-gradient(145deg, #f8fffc, #f2fbf7); }
 
 .task-title-row {
   display: flex;

@@ -540,16 +540,45 @@ a {
 }
 
 .page-heading {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+  overflow: hidden;
   margin-bottom: 26px;
+  padding: 25px 28px;
+  border: 1px solid #2563eb;
+  border-radius: var(--radius-lg);
+  color: #fff;
+  background:
+    radial-gradient(circle at 78% 20%, rgb(103 232 249 / 24%) 0 2px, transparent 3px),
+    linear-gradient(120deg, #102f68 0%, #1d4ed8 58%, #2784e8 100%);
+  background-size: 35px 35px, auto;
+  box-shadow: 0 18px 40px rgb(29 78 216 / 16%);
+}
+
+.page-heading::after {
+  position: absolute;
+  top: -115px;
+  right: 10%;
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 38px rgb(255 255 255 / 5%), 0 0 0 82px rgb(255 255 255 / 3%);
+  content: '';
+  pointer-events: none;
+}
+
+.page-heading > * {
+  position: relative;
+  z-index: 1;
 }
 
 .page-heading h1 {
   margin: 0;
-  color: var(--text);
+  color: #fff;
   font-family: "Segoe UI Variable Display", "Microsoft YaHei UI", sans-serif;
   font-size: clamp(27px, 2.2vw, 32px);
   line-height: 1.25;
@@ -559,8 +588,33 @@ a {
 .page-heading p {
   margin: 7px 0 0;
   max-width: 720px;
-  color: var(--muted);
+  color: #dbeafe;
   font-size: 14px;
+}
+
+.page-heading .eyebrow {
+  color: #93c5fd;
+}
+
+.page-heading .soft-label {
+  border: 1px solid rgb(255 255 255 / 20%);
+  color: #e0f2fe;
+  background: rgb(255 255 255 / 12%);
+  backdrop-filter: blur(6px);
+}
+
+.page-heading > .el-button,
+.page-heading > div > .el-button {
+  border-color: rgb(255 255 255 / 72%);
+  color: #fff;
+  background: rgb(255 255 255 / 10%);
+}
+
+.page-heading > .el-button:hover,
+.page-heading > div > .el-button:hover {
+  border-color: #fff;
+  color: #1746a2;
+  background: #fff;
 }
 
 .surface-card {
@@ -782,7 +836,12 @@ a {
 
   .page-heading {
     flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 22px 20px;
   }
+
+  .page-heading::after { right: -135px; }
 
   .page-heading h1 {
     font-size: 26px;

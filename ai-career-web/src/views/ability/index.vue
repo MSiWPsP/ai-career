@@ -114,7 +114,17 @@ function sourceLabel(source: string) {
 
 <style scoped>
 .ability-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-.ability-summary article { display: flex; align-items: center; gap: 13px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
+.ability-summary article { position: relative; display: flex; min-height: 96px; align-items: center; gap: 13px; overflow: hidden; padding: 18px 20px; border: 1px solid #bfd6f5; border-radius: 13px; background: linear-gradient(145deg, #fff, #f3f8ff); box-shadow: 0 10px 25px rgb(29 78 216 / 8%); transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard); }
+.ability-summary article::after { position: absolute; right: -32px; bottom: -48px; width: 110px; height: 110px; border: 16px solid rgb(59 130 246 / 8%); border-radius: 50%; content: ''; }
+.ability-summary article:hover { box-shadow: 0 18px 34px rgb(29 78 216 / 14%); transform: translateY(-4px); }
+.ability-summary article:first-child { border-color: #2563eb; color: #fff; background: linear-gradient(145deg, #123b82, #2563eb); }
+.ability-summary article:nth-child(2) { border-color: #3b82f6; color: #fff; background: linear-gradient(145deg, #1d4ed8, #2297e6); }
+.ability-summary article:first-child p,
+.ability-summary article:nth-child(2) p,
+.ability-summary article:first-child small,
+.ability-summary article:nth-child(2) small { color: #dbeafe; }
+.ability-summary article:first-child .summary-icon,
+.ability-summary article:nth-child(2) .summary-icon { color: #fff; background: rgb(255 255 255 / 14%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%); }
 .summary-icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 13px; color: var(--primary); background: var(--primary-soft); font-size: 20px; }
 .summary-icon.green { color: var(--success); background: var(--success-soft); }
 .summary-icon.orange { color: var(--warning); background: var(--warning-soft); }
@@ -124,8 +134,12 @@ function sourceLabel(source: string) {
 .ability-summary .ability-name { font-size: 16px; }
 .ability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .chart-card,
-.history-card { padding: 23px 25px; }
+.history-card { position: relative; overflow: hidden; padding: 23px 25px; background: linear-gradient(145deg, #fff, #f8fbff); box-shadow: 0 14px 34px rgb(23 49 92 / 8%); }
+.chart-card::before { position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, #2563eb, #38bdf8, transparent 85%); content: ''; }
+.chart-card { transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard); }
+.chart-card:hover { box-shadow: 0 20px 42px rgb(29 78 216 / 12%); transform: translateY(-3px); }
 .history-card { margin-top: 20px; }
+.history-card .card-header { margin: -23px -25px 20px; padding: 20px 25px; border-bottom: 1px solid #d8e6f6; background: linear-gradient(90deg, #eff6ff, #fff); }
 .table-score { display: grid; grid-template-columns: minmax(100px, 1fr) 35px; align-items: center; gap: 12px; }
 .table-score strong { color: var(--primary); }
 @media (max-width: 900px) { .ability-grid { grid-template-columns: 1fr; } }

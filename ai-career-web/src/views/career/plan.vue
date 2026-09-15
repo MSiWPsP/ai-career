@@ -157,25 +157,38 @@ async function generateFirstPlan() {
 .plan-actions { display: flex; gap: 10px; }
 .load-alert { margin-bottom: 20px; }
 .plan-hero {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 30px;
+  overflow: hidden;
   padding: 30px 36px;
   background:
-    linear-gradient(90deg, rgba(239, 246, 255, .72), rgba(255, 255, 255, 0) 58%),
-    #fff;
-  box-shadow: inset 4px 0 0 var(--primary), var(--shadow);
+    radial-gradient(circle at 84% 20%, rgb(103 232 249 / 28%), transparent 34%),
+    linear-gradient(120deg, #102f68, #1d4ed8 60%, #2686e7);
+  color: #fff;
+  box-shadow: 0 20px 44px rgb(29 78 216 / 18%);
 }
 
+.plan-hero::after { position: absolute; right: -70px; bottom: -130px; width: 290px; height: 290px; border: 1px solid rgb(255 255 255 / 18%); border-radius: 50%; box-shadow: 0 0 0 42px rgb(255 255 255 / 5%); content: ''; pointer-events: none; }
+.plan-hero > * { position: relative; z-index: 1; }
+
 .plan-hero > div:first-child { max-width: 780px; }
-.plan-hero h2 { margin: 18px 0 10px; font-size: 28px; }
-.plan-hero p { margin: 0 0 18px; color: var(--muted); line-height: 1.8; }
-.plan-hero small { color: var(--muted); }
+.plan-hero h2 { margin: 18px 0 10px; color: #fff; font-size: 28px; }
+.plan-hero p { margin: 0 0 18px; color: #dbeafe; line-height: 1.8; }
+.plan-hero small { color: #bfdbfe; }
+.plan-hero .soft-label { border: 1px solid rgb(255 255 255 / 20%); color: #e0f2fe; background: rgb(255 255 255 / 12%); }
 .match-score { min-width: 160px; text-align: center; }
-.match-score span { display: block; margin-top: -15px; color: var(--muted); font-size: 12px; }
+.match-score span { display: block; margin-top: -15px; color: #dbeafe; font-size: 12px; }
+.match-score :deep(.el-progress-circle__track) { stroke: rgb(255 255 255 / 18%); }
+.match-score :deep(.el-progress__text) { color: #fff !important; }
 .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
-.insight-card { padding: 23px 26px; }
+.insight-card { position: relative; overflow: hidden; padding: 23px 26px; box-shadow: 0 12px 30px rgb(23 49 92 / 8%); transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard); }
+.insight-card:hover { box-shadow: 0 19px 38px rgb(29 78 216 / 12%); transform: translateY(-4px); }
+.insight-card::before { position: absolute; inset: 0 0 auto; height: 3px; content: ''; }
+.insight-card.advantage::before { background: linear-gradient(90deg, #14b8a6, #67e8f9, transparent); }
+.insight-card.weakness::before { background: linear-gradient(90deg, #f59e0b, #fcd34d, transparent); }
 .insight-card .card-header .el-icon {
   display: grid;
   width: 30px;
@@ -190,7 +203,8 @@ async function generateFirstPlan() {
 .insight-card li::before { position: absolute; left: 0; color: var(--primary); content: '•'; }
 .muted-copy { color: var(--muted); font-size: 13px; }
 .roadmap-card,
-.history-card { padding: 25px 28px; }
+.history-card { position: relative; overflow: hidden; padding: 25px 28px; box-shadow: 0 14px 34px rgb(23 49 92 / 8%); }
+.roadmap-card::before { position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, #2563eb, #38bdf8 62%, transparent); content: ''; }
 .history-card { margin-top: 20px; }
 .version-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .version-list button {
@@ -205,7 +219,9 @@ async function generateFirstPlan() {
   background: #fff;
   cursor: pointer;
   text-align: left;
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
+.version-list button:hover { border-color: #a8c6f0; box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateY(-3px); }
 .version-list button.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px rgba(29, 78, 216, .08); }
 .version-list span { grid-row: 1 / 3; color: var(--primary); font-size: 17px; font-weight: 800; }
 .version-list strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
