@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   ArrowRight,
   ChatDotRound,
+  CircleCheck,
   Clock,
   Close,
+  Connection,
   Delete,
   EditPen,
   Folder,
+  Loading,
   MagicStick,
   MoreFilled,
   Plus,
   RefreshRight,
   User,
+  UserFilled,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -49,12 +53,17 @@ const profile = ref<UserProfile>()
 const skills = ref<UserSkill[]>([])
 const currentPlan = ref<CareerPlan>()
 const planGenerating = ref(false)
+const thinkingStep = ref(0)
 let activeRequestController: AbortController | undefined
+let thinkingTimer: number | undefined
 
 const activeSession = computed(() =>
   sessions.value.find((item) => item.conversationId === conversationId.value),
 )
 const conversationArchived = computed(() => activeSession.value?.status === 0)
+const waitingForFirstToken = computed(
+  () => sending.value && messages.value[messages.value.length - 1]?.role !== 'assistant',
+)
 const contextTip = computed(() => {
   const available: string[] = []
   const missing: string[] = []
@@ -77,6 +86,24 @@ const quickQuestions = [
   'Redis 和微服务应该先学哪个？',
 ]
 
+const thinkingSteps = [
+  {
+    label: '读取成长档案',
+    detail: '同步职业画像、技能与当前目标',
+    icon: UserFilled,
+  },
+  {
+    label: '融合会话上下文',
+    detail: '关联近期对话与当前职业规划',
+    icon: Connection,
+  },
+  {
+    label: '生成个性化建议',
+    detail: '组织判断依据与可执行的下一步',
+    icon: MagicStick,
+  },
+]
+
 const careerStageLabel: Record<string, string> = {
   EXPLORING: '探索方向',
   LEARNING: '学习提升',
@@ -91,7 +118,26 @@ onMounted(async () => {
   await scrollToBottom()
 })
 
-onBeforeUnmount(() => activeRequestController?.abort())
+watch(waitingForFirstToken, (waiting) => {
+  stopThinkingProgress()
+  thinkingStep.value = 0
+  if (!waiting) return
+
+  thinkingTimer = window.setInterval(() => {
+    thinkingStep.value = Math.min(thinkingStep.value + 1, thinkingSteps.length - 1)
+  }, 1200)
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  activeRequestController?.abort()
+  stopThinkingProgress()
+})
+
+function stopThinkingProgress() {
+  if (thinkingTimer === undefined) return
+  window.clearInterval(thinkingTimer)
+  thinkingTimer = undefined
+}
 
 async function loadContext() {
   contextLoading.value = true
@@ -424,11 +470,35 @@ async function handlePlanAction() {
             </div>
           </article>
 
-          <article v-if="sending && messages[messages.length - 1]?.role !== 'assistant'" class="chat-message assistant pending-message">
+          <article v-if="waitingForFirstToken" class="chat-message assistant pending-message">
             <AgentAvatar role="planner" :size="36" />
-            <div class="message-bubble">
-              <small>AI 职业规划师</small>
-              <div class="typing-dots"><i></i><i></i><i></i></div>
+            <div class="message-bubble thinking-panel" aria-live="polite" aria-label="AI 职业规划师正在分析">
+              <div class="thinking-heading">
+                <span class="thinking-spinner"><el-icon><Loading /></el-icon></span>
+                <span>
+                  <small>AI 职业规划师</small>
+                  <strong>正在构建个性化回答</strong>
+                </span>
+                <em>智能分析中</em>
+              </div>
+              <div class="thinking-steps">
+                <div
+                  v-for="(step, index) in thinkingSteps"
+                  :key="step.label"
+                  class="thinking-step"
+                  :class="{ active: index === thinkingStep, completed: index < thinkingStep }"
+                >
+                  <span class="thinking-step-icon">
+                    <el-icon v-if="index < thinkingStep"><CircleCheck /></el-icon>
+                    <el-icon v-else><component :is="step.icon" /></el-icon>
+                  </span>
+                  <span>
+                    <b>{{ step.label }}</b>
+                    <small>{{ step.detail }}</small>
+                  </span>
+                </div>
+              </div>
+              <p class="thinking-note"><i></i> 上下文就绪后将立即开始流式输出</p>
             </div>
           </article>
 
@@ -614,10 +684,32 @@ async function handlePlanAction() {
 .chat-message.user .message-bubble { border-color: #cbdcf4; border-radius: 12px 4px 12px 12px; background: var(--primary-soft); }
 .chat-message.user .message-bubble > p { margin-top: 0; }
 .chat-message.failed .message-bubble { border-color: #efb5b5; background: #fff7f7; }
-.typing-dots { display: flex; gap: 5px; min-width: 50px; padding: 10px 2px 3px; }
-.typing-dots i { width: 7px; height: 7px; border-radius: 50%; background: #8da5c3; animation: pulse 1.2s infinite ease-in-out; }
-.typing-dots i:nth-child(2) { animation-delay: 0.15s; }
-.typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+.pending-message { width: min(570px, 88%); max-width: none; }
+.thinking-panel { position: relative; width: 100%; overflow: hidden; padding: 16px; border-color: #bfd4f2; background: linear-gradient(145deg, rgb(255 255 255 / 98%), rgb(242 247 255 / 98%)); box-shadow: 0 12px 32px rgb(23 70 154 / 10%); }
+.thinking-panel::after { position: absolute; right: -72px; bottom: -86px; width: 170px; height: 170px; border: 1px solid rgb(37 99 235 / 10%); border-radius: 50%; box-shadow: 0 0 0 28px rgb(37 99 235 / 4%); content: ''; pointer-events: none; }
+.thinking-heading { position: relative; z-index: 1; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.thinking-spinner { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #c6d9f5; border-radius: 10px; color: #fff; background: linear-gradient(145deg, #1746a2, #2c72e4); box-shadow: 0 7px 16px rgb(37 99 235 / 22%); }
+.thinking-spinner .el-icon { font-size: 17px; animation: thinking-spin 1.4s linear infinite; }
+.thinking-heading > span:nth-child(2) { min-width: 0; }
+.thinking-heading small,
+.thinking-heading strong { display: block; }
+.thinking-heading small { color: #71839a; font-size: 10px; font-weight: 700; }
+.thinking-heading strong { margin-top: 3px; color: var(--text); font-size: 14px; }
+.thinking-heading em { padding: 5px 8px; border: 1px solid #c7daf6; border-radius: 999px; color: #2858aa; background: #edf4ff; font-size: 9px; font-style: normal; font-weight: 800; letter-spacing: .04em; }
+.thinking-steps { position: relative; z-index: 1; display: grid; margin-top: 14px; gap: 6px; }
+.thinking-step { display: grid; grid-template-columns: 27px minmax(0, 1fr); align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid transparent; border-radius: 8px; color: #8795a8; transition: border-color 160ms ease, color 160ms ease, background 160ms ease; }
+.thinking-step.active { border-color: #c9daf4; color: var(--primary-dark); background: rgb(255 255 255 / 82%); box-shadow: 0 5px 15px rgb(23 70 154 / 6%); }
+.thinking-step.completed { color: #55708f; }
+.thinking-step-icon { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid #d8e2ef; border-radius: 8px; background: #f5f8fc; font-size: 13px; }
+.thinking-step.active .thinking-step-icon { border-color: #a9c4ee; color: #fff; background: var(--primary); box-shadow: 0 4px 10px rgb(37 99 235 / 18%); }
+.thinking-step.completed .thinking-step-icon { border-color: #a7d9c9; color: #147a63; background: #eaf8f3; }
+.thinking-step b,
+.thinking-step small { display: block; }
+.thinking-step b { font-size: 11px; }
+.thinking-step small { margin-top: 2px; color: #8a98aa; font-size: 9px; }
+.thinking-step.active small { color: #647892; }
+.thinking-note { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; margin: 12px 2px 0; color: #6f8096; font-size: 9px; }
+.thinking-note i { width: 6px; height: 6px; border-radius: 50%; background: #22a67a; box-shadow: 0 0 0 4px rgb(34 166 122 / 10%); animation: status-pulse 1.6s ease-in-out infinite; }
 .chat-error { max-width: 620px; margin: 0 auto 20px; }
 .chat-error :deep(.el-alert__content) { width: 100%; }
 .chat-error .el-button { margin-top: 9px; }
@@ -679,7 +771,8 @@ async function handlePlanAction() {
 .session-main em { margin-top: 6px; color: #8493a5; font-size: 10px; font-style: normal; }
 .session-item > .el-dropdown { margin-top: 5px; }
 .chat-page :deep(.el-drawer__body) { padding-top: 8px; }
-@keyframes pulse { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+@keyframes thinking-spin { to { transform: rotate(360deg); } }
+@keyframes status-pulse { 50% { opacity: .45; transform: scale(.78); } }
 @keyframes cursor-blink { 50% { opacity: 0; } }
 @media (max-width: 1100px) { .chat-layout { grid-template-columns: minmax(0, 1fr) 230px; } }
 @media (max-width: 960px) { .chat-page { min-height: auto; } .chat-layout { grid-template-columns: 1fr; height: auto; } .chat-card { height: clamp(560px, calc(100dvh - 120px), 760px); } .portrait-card { width: 100%; } }
@@ -692,11 +785,18 @@ async function handlePlanAction() {
   .chat-message { width: 100%; max-width: 100%; gap: 9px; }
   .chat-message .message-bubble { min-width: 0; flex: 1; padding: 13px 14px; }
   .chat-message.user { width: auto; max-width: 94%; }
+  .pending-message { width: 100%; max-width: 100%; }
+  .thinking-heading { grid-template-columns: 36px minmax(0, 1fr); }
+  .thinking-heading em { display: none; }
   .chat-input { margin-inline: 14px; }
   .quick-list { padding-inline: 14px 10px; }
   .quick-questions { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
   .quick-questions::-webkit-scrollbar { display: none; }
   .quick-question { flex: 0 0 auto; }
   .input-meta small { max-width: 145px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-spinner .el-icon,
+  .thinking-note i { animation: none; }
 }
 </style>
