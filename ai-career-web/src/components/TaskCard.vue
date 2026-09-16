@@ -74,16 +74,30 @@ const priority = computed(() => {
 }
 
 .task-check {
-  display: grid;
+  display: inline-flex;
+  box-sizing: border-box;
   width: 22px;
   height: 22px;
-  margin-top: 1px;
-  place-items: center;
+  margin: 1px 0 0;
+  padding: 0;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
   border: 2px solid #c4d1df;
   border-radius: 7px;
   color: #fff;
   background: #fff;
+  font: inherit;
+  line-height: 1;
+  appearance: none;
   cursor: pointer;
+}
+
+.task-check .el-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .completed .task-check {
