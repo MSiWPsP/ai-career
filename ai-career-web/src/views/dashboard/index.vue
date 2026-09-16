@@ -32,7 +32,7 @@ import { formatDate, interviewTypeLabel, parseJsonField } from '../../utils/data
 
 const router = useRouter()
 const loading = ref(true)
-const updatingTaskId = ref<number>()
+const updatingTaskId = ref<string>()
 const user = ref<UserInfo>()
 const profile = ref<UserProfile>()
 const plan = ref<CareerPlan>()
@@ -115,6 +115,8 @@ async function changeTaskStatus(task: CareerTask, status: number) {
     const index = tasks.value.findIndex((item) => item.id === task.id)
     if (index >= 0) tasks.value[index] = updated
     statistics.value = await getTaskStatistics()
+  } catch {
+    // 请求层已经展示错误信息；保留当前页面数据并结束本次更新。
   } finally {
     updatingTaskId.value = undefined
   }

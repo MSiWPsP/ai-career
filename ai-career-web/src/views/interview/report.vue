@@ -18,6 +18,7 @@ const loadError = ref(false)
 const generating = ref(false)
 const replanning = ref(false)
 const hasPlan = ref(false)
+const usedForReplan = ref(false)
 
 const radar = computed<AbilityRadarData>(() => {
   const scores = report.value?.scores || {}
@@ -47,6 +48,7 @@ async function loadReport() {
     ])
     detail.value = interview
     hasPlan.value = Boolean(currentPlan)
+    usedForReplan.value = currentPlan?.sourceInterviewId === id
     try {
       report.value = await getInterviewReport(id, { silent: true })
     } catch {
@@ -163,7 +165,15 @@ async function replan() {
 
       <section class="replan-banner">
         <div><span>形成成长闭环</span><strong>根据本次面试表现，动态调整职业规划</strong></div>
-        <el-button v-if="hasPlan" type="primary" size="large" :icon="MagicStick" :loading="replanning" @click="replan">根据本次面试重新规划</el-button>
+        <el-button
+          v-if="hasPlan"
+          type="primary"
+          size="large"
+          :icon="usedForReplan ? CircleCheck : MagicStick"
+          :loading="replanning"
+          :disabled="usedForReplan"
+          @click="replan"
+        >{{ usedForReplan ? '已根据本次面试重新规划' : '根据本次面试重新规划' }}</el-button>
         <el-button v-else type="primary" size="large" :icon="MagicStick" @click="router.push('/career/plan')">先生成首版职业规划</el-button>
       </section>
     </template>

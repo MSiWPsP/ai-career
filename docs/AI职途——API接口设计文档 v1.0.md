@@ -778,7 +778,8 @@ GET /api/task?planId=20001
   "message": "success",
   "data": [
     {
-      "id": 50001,
+      "id": "50001",
+      "careerPlanId": "20001",
       "stageName": "Java核心强化",
       "taskName": "复习HashMap",
       "taskDescription": "掌握底层结构和扩容机制",
@@ -790,6 +791,10 @@ GET /api/task?planId=20001
   ]
 }
 ```
+
+职业规划和成长任务使用雪花 ID。`careerPlan.id`、`careerTask.id` 与
+`careerTask.careerPlanId` 对外统一按 JSON 字符串返回，前端也应以字符串透传，
+避免超过 JavaScript 安全整数范围后发生精度丢失。
 
 ---
 

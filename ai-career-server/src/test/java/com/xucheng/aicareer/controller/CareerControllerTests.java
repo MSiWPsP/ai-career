@@ -10,9 +10,11 @@ import com.xucheng.aicareer.vo.CareerChatMessageVO;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
 import com.xucheng.aicareer.vo.CareerChatStreamVO;
 import com.xucheng.aicareer.vo.CareerPlanVO;
+import com.xucheng.aicareer.vo.CareerTaskVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.publisher.Flux;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -118,5 +120,20 @@ class CareerControllerTests {
         assertThat(result.getMessage()).isEqualTo("职业规划生成成功");
         assertThat(result.getData()).isSameAs(plan);
         verify(careerPlanService).generatePlan();
+    }
+
+    @Test
+    void careerTaskIdentifiersAreSerializedAsStringsForJavaScriptSafety() throws Exception {
+        CareerTaskVO task = CareerTaskVO.builder()
+                .id(2100049665383858177L)
+                .careerPlanId(2100049665383858001L)
+                .taskName("复习Java集合")
+                .build();
+
+        String json = new ObjectMapper().writeValueAsString(task);
+
+        assertThat(json)
+                .contains("\"id\":\"2100049665383858177\"")
+                .contains("\"careerPlanId\":\"2100049665383858001\"");
     }
 }

@@ -6,7 +6,7 @@ import TaskCard from '../../components/TaskCard.vue'
 import type { CareerTask, TaskStatistics } from '../../types/api'
 
 const loading = ref(true)
-const updatingTaskId = ref<number>()
+const updatingTaskId = ref<string>()
 const activeStatus = ref<number | undefined>()
 const tasks = ref<CareerTask[]>([])
 const statistics = ref<TaskStatistics>({ total: 0, completed: 0, processing: 0, waiting: 0, completionRate: 0 })
@@ -54,6 +54,8 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   try {
     await updateTaskStatus(task.id, status)
     await load()
+  } catch {
+    // 请求层已经展示错误信息；组件内消费异常，避免 Vue 报告未处理的事件错误。
   } finally {
     updatingTaskId.value = undefined
   }

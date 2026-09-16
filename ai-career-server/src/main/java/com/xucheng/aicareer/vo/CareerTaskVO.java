@@ -2,6 +2,8 @@ package com.xucheng.aicareer.vo;
 
 import lombok.Builder;
 import lombok.Data;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.ser.std.ToStringSerializer;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,7 +12,9 @@ import java.time.LocalDateTime;
 @Builder
 public class CareerTaskVO {
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long careerPlanId;
     private String stageName;
     private String taskName;

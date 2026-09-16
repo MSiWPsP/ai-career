@@ -135,8 +135,8 @@ export interface CareerChatSessionUpdatePayload {
 }
 
 export interface CareerTask {
-  id: number
-  careerPlanId: number
+  id: string
+  careerPlanId: string
   stageName: string
   taskName: string
   taskDescription?: string
