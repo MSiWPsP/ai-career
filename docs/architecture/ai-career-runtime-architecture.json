@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AI职途 · 高层运行时架构",
+    "locale": "zh-CN",
+    "output": "ai-career-runtime-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [1320, 720],
+    "repository": {
+      "url": "https://github.com/MSiWPsP/ai-career",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "c3608f19e2740ab810bc5394050e2a9d2a53f6d2"
+    },
+    "views": [
+      {
+        "id": "primary-request",
+        "label": "主要请求路径",
+        "focus": ["student", "vue-spa", "jwt-gate", "api-controllers", "domain-services", "ai-agents", "qwen-api"],
+        "note": "从用户交互、JWT 鉴权到业务编排，再到 AI 流式或结构化响应。"
+      },
+      {
+        "id": "state-and-memory",
+        "label": "数据与会话记忆",
+        "focus": ["domain-services", "mysql", "chat-memory", "ai-agents"],
+        "note": "MySQL 保存业务事实；ChatMemory 仅保留近期窗口，并可由持久化消息重建。"
+      },
+      {
+        "id": "external-services",
+        "label": "外部服务",
+        "focus": ["domain-services", "ai-agents", "qwen-api", "aliyun-oss"],
+        "note": "AI 模型和对象存储位于应用信任边界之外，分别使用 HTTPS 与 OSS SDK。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "student",
+      "type": "external",
+      "label": "学生用户",
+      "sublabel": "桌面端 / 移动端浏览器",
+      "pos": [40, 300],
+      "size": [140, 72],
+      "sources": [
+        { "path": "ai-career-web/src/router/index.ts", "label": "前端路由" }
+      ]
+    },
+    {
+      "id": "vue-spa",
+      "type": "frontend",
+      "label": "Vue 3 SPA",
+      "sublabel": "Vite · Pinia · Axios",
+      "tag": "浏览器运行时",
+      "pos": [230, 292],
+      "size": [170, 88],
+      "sources": [
+        { "path": "ai-career-web/src/utils/request.ts", "label": "Axios 请求封装" },
+        { "path": "ai-career-web/src/router/index.ts", "label": "业务页面路由" }
+      ]
+    },
+    {
+      "id": "jwt-gate",
+      "type": "security",
+      "label": "JWT 鉴权边界",
+      "sublabel": "JwtInterceptor · UserContext",
+      "tag": "/api/auth/** 匿名",
+      "pos": [450, 292],
+      "size": [170, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/interceptor/JwtInterceptor.java", "label": "Bearer JWT 校验" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/config/WebMvcConfig.java", "label": "拦截器范围" }
+      ]
+    },
+    {
+      "id": "api-controllers",
+      "type": "backend",
+      "label": "Spring Boot API",
+      "sublabel": "REST Controllers · SSE",
+      "tag": "/api/**",
+      "pos": [670, 292],
+      "size": [170, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/controller/CareerController.java", "label": "职业规划 API" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/controller/InterviewController.java", "label": "模拟面试 API" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/common/Result.java", "label": "统一响应" }
+      ]
+    },
+    {
+      "id": "domain-services",
+      "type": "backend",
+      "label": "业务服务层",
+      "sublabel": "画像 · 规划 · 任务 · 面试 · 能力",
+      "tag": "事务与业务编排",
+      "pos": [890, 292],
+      "size": [190, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/service/impl/CareerChatServiceImpl.java", "label": "职业聊天编排" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/service/impl/CareerPlanServiceImpl.java", "label": "规划与任务" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/service/impl/InterviewServiceImpl.java", "label": "面试状态机" }
+      ]
+    },
+    {
+      "id": "ai-agents",
+      "type": "backend",
+      "label": "Spring AI Agent 层",
+      "sublabel": "Planner · Interviewer · Report",
+      "tag": "ChatClient + Prompt",
+      "pos": [890, 105],
+      "size": [190, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/config/AiConfig.java", "label": "ChatClient 隔离" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/agent/career/CareerPlannerAgent.java", "label": "职业规划 Agent" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/agent/interview/InterviewerAgent.java", "label": "面试 Agent" }
+      ]
+    },
+    {
+      "id": "chat-memory",
+      "type": "database",
+      "label": "ChatMemory 窗口缓存",
+      "sublabel": "MessageWindowChatMemory",
+      "tag": "进程内 · 可重建",
+      "pos": [650, 105],
+      "size": [190, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/config/ChatMemoryConfig.java", "label": "近期消息窗口" },
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/service/impl/CareerChatServiceImpl.java", "label": "数据库恢复记忆" }
+      ]
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL 8",
+      "sublabel": "业务事实 · 会话 · 规划 · 面试",
+      "tag": "MyBatis-Plus + Flyway",
+      "pos": [890, 485],
+      "size": [190, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/resources/application-dev.yml", "label": "数据源配置" },
+        { "path": "ai-career-server/src/main/resources/db/migration/V1__init_core_schema.sql", "label": "核心数据模型" }
+      ]
+    },
+    {
+      "id": "qwen-api",
+      "type": "external",
+      "label": "外部大模型 API",
+      "sublabel": "Qwen · OpenAI-compatible",
+      "tag": "AI_BASE_URL / AI_API_KEY",
+      "pos": [1140, 105],
+      "size": [160, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/resources/application.yml", "label": "模型与超时配置" }
+      ]
+    },
+    {
+      "id": "aliyun-oss",
+      "type": "cloud",
+      "label": "阿里云 OSS",
+      "sublabel": "用户头像对象存储",
+      "tag": "上海节点",
+      "pos": [1140, 485],
+      "size": [160, 88],
+      "sources": [
+        { "path": "ai-career-server/src/main/java/com/xucheng/aicareer/oss/AliyunOssService.java", "label": "上传与清理" },
+        { "path": "ai-career-server/src/main/resources/application.yml", "label": "Bucket 配置" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "用户设备信任边界",
+      "wraps": ["student", "vue-spa"],
+      "pad": 18
+    },
+    {
+      "kind": "security-group",
+      "label": "AI职途应用信任边界",
+      "wraps": ["jwt-gate", "api-controllers", "domain-services", "ai-agents", "chat-memory"],
+      "pad": 22
+    },
+    {
+      "kind": "region",
+      "label": "持久化数据边界",
+      "wraps": ["mysql"],
+      "pad": 18
+    },
+    {
+      "kind": "region",
+      "label": "外部云服务边界",
+      "wraps": ["qwen-api", "aliyun-oss"],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "id": "student-ui",
+      "from": "student",
+      "to": "vue-spa",
+      "label": "页面交互",
+      "variant": "emphasis"
+    },
+    {
+      "id": "spa-api",
+      "from": "vue-spa",
+      "to": "jwt-gate",
+      "label": "HTTPS /api/** · Bearer JWT",
+      "labelAt": [425, 394],
+      "variant": "security"
+    },
+    {
+      "id": "auth-route",
+      "from": "jwt-gate",
+      "to": "api-controllers",
+      "label": "鉴权后路由",
+      "labelAt": [645, 270],
+      "variant": "security"
+    },
+    {
+      "id": "controller-service",
+      "from": "api-controllers",
+      "to": "domain-services",
+      "label": "REST / SSE 业务调用",
+      "labelAt": [865, 394],
+      "variant": "emphasis"
+    },
+    {
+      "id": "service-agent",
+      "from": "domain-services",
+      "to": "ai-agents",
+      "label": "业务上下文 + 结构化输入",
+      "variant": "emphasis"
+    },
+    {
+      "id": "agent-model",
+      "from": "ai-agents",
+      "to": "qwen-api",
+      "label": "OpenAI-compatible HTTPS",
+      "labelAt": [1110, 207],
+      "variant": "emphasis"
+    },
+    {
+      "id": "agent-memory",
+      "from": "ai-agents",
+      "to": "chat-memory",
+      "label": "Advisor 读取 / 写入近期窗口",
+      "labelAt": [865, 76]
+    },
+    {
+      "id": "service-memory",
+      "from": "domain-services",
+      "to": "chat-memory",
+      "label": "恢复 / 清理会话窗口",
+      "variant": "dashed"
+    },
+    {
+      "id": "service-mysql",
+      "from": "domain-services",
+      "to": "mysql",
+      "label": "MyBatis-Plus CRUD",
+      "labelAt": [985, 432],
+      "variant": "emphasis"
+    },
+    {
+      "id": "service-oss",
+      "from": "domain-services",
+      "to": "aliyun-oss",
+      "label": "OSS SDK · 头像上传 / 删除"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "主要路径",
+      "items": [
+        "Vue SPA 通过统一 Axios 层调用 /api/**",
+        "职业咨询使用 SSE 流式返回；其他用例使用统一 Result"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "数据与缓存",
+      "items": [
+        "MySQL 是业务与完整消息的事实来源",
+        "ChatMemory 仅保存 Agent 所需近期窗口，可从数据库重建"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "信任边界",
+      "items": [
+        "除认证接口外，/api/** 统一执行 Bearer JWT 校验",
+        "模型 API 与 OSS 使用环境变量凭证，位于应用边界之外"
+      ]
+    }
+  ]
+}
