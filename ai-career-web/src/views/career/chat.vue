@@ -253,7 +253,11 @@ async function send(content = message.value, retryClientMessageId?: string) {
           }
         },
         onDelta(event) {
-          careerChatStore.appendAssistantMessage(event.clientMessageId || clientMessageId, event.content || '')
+          careerChatStore.appendAssistantMessage(
+            event.clientMessageId || clientMessageId,
+            event.content || '',
+            ragStepVisible.value,
+          )
           void scrollToBottom()
         },
         onDone(event) {
@@ -262,6 +266,7 @@ async function send(content = message.value, retryClientMessageId?: string) {
             event.conversationId,
             event.clientMessageId || clientMessageId,
             event.ragApplied ? event.references ?? [] : [],
+            ragStepVisible.value || !!event.ragApplied,
           )
         },
       },
@@ -466,6 +471,13 @@ async function handlePlanAction() {
             <AgentAvatar v-else role="planner" :size="36" />
             <div class="message-bubble">
               <small v-if="item.role === 'assistant'">AI 职业规划师</small>
+              <div v-if="item.role === 'assistant' && item.ragAttempted" class="rag-status">
+                <el-icon><Search /></el-icon>
+                <strong>RAG 知识库</strong>
+                <span v-if="item.references?.length">已引用 {{ item.references.length }} 条依据</span>
+                <span v-else-if="item.status === 'sending'">已发起检索，正在组织回答</span>
+                <span v-else>本轮未引用知识片段</span>
+              </div>
               <div
                 v-if="item.role === 'assistant'"
                 class="markdown-content"
@@ -701,6 +713,10 @@ async function handlePlanAction() {
 .markdown-content :deep(th) { color: var(--text); background: #f3f7fc; }
 .markdown-content :deep(hr) { margin: 14px 0; border: 0; border-top: 1px solid var(--line); }
 .markdown-content.streaming-content :deep(> :last-child)::after { display: inline-block; width: 2px; height: 1em; margin-left: 3px; background: var(--primary); content: ''; vertical-align: -2px; animation: cursor-blink 0.8s steps(1) infinite; }
+.rag-status { display: flex; width: fit-content; max-width: 100%; align-items: center; flex-wrap: wrap; gap: 5px 7px; margin-top: 8px; padding: 6px 9px; border: 1px solid #bed8ed; border-radius: 7px; color: #285679; background: #f0f8fd; font-size: 11px; line-height: 1.4; }
+.rag-status .el-icon { font-size: 13px; }
+.rag-status strong { font-weight: 800; }
+.rag-status span { color: #58788f; }
 .knowledge-sources { margin-top: 15px; padding-top: 12px; border-top: 1px solid #dce7f4; }
 .knowledge-sources-heading { display: flex; align-items: center; gap: 7px; color: #345a91; font-size: 11px; font-weight: 800; }
 .knowledge-sources-heading .el-icon { font-size: 14px; }

@@ -12,6 +12,7 @@ export interface CareerChatMessage {
   role: 'assistant' | 'user'
   content: string
   references?: CareerKnowledgeReference[]
+  ragAttempted?: boolean
   status: CareerChatMessageStatus
 }
 
@@ -86,7 +87,7 @@ export const useCareerChatStore = defineStore('careerChat', () => {
     })
   }
 
-  function appendAssistantMessage(clientMessageId: string, content: string) {
+  function appendAssistantMessage(clientMessageId: string, content: string, ragAttempted = false) {
     let target = messages.value.find(
       (item) => item.role === 'assistant' && item.clientMessageId === clientMessageId,
     )
@@ -96,17 +97,20 @@ export const useCareerChatStore = defineStore('careerChat', () => {
         clientMessageId,
         role: 'assistant',
         content: '',
+        ragAttempted,
         status: 'sending',
       }
       messages.value.push(target)
     }
     target.content += content
+    target.ragAttempted ||= ragAttempted
   }
 
   function finishSending(
     nextConversationId: string,
     clientMessageId: string,
     references: CareerKnowledgeReference[] = [],
+    ragAttempted = false,
   ) {
     conversationId.value = nextConversationId
     localStorage.setItem(activeStorageKey, nextConversationId)
@@ -117,6 +121,7 @@ export const useCareerChatStore = defineStore('careerChat', () => {
       const parsed = splitCareerKnowledgeSources(assistant.content)
       assistant.content = parsed.body
       assistant.references = references.length ? references : parsed.references
+      assistant.ragAttempted ||= ragAttempted || assistant.references.length > 0
     }
     messages.value
       .filter((item) => item.clientMessageId === clientMessageId)
@@ -185,6 +190,7 @@ function toDisplayMessage(message: CareerChatHistoryMessage): CareerChatMessage 
     role: message.role,
     content: parsed.body,
     references: parsed.references,
+    ragAttempted: parsed.references.length > 0,
     status: message.status === 1 ? 'completed' : 'failed',
   }
 }
