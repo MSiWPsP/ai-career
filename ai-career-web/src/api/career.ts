@@ -12,6 +12,7 @@ import { request, type RequestConfig } from '../utils/request'
 import { tokenStorage, userStorage } from '../utils/storage'
 
 interface CareerChatStreamHandlers {
+  onPhase?: (event: CareerChatStreamEvent) => void
   onDelta: (event: CareerChatStreamEvent) => void
   onDone: (event: CareerChatStreamEvent) => void
   onError?: (event: CareerChatStreamEvent) => void
@@ -91,6 +92,10 @@ export async function streamCareerPlannerChat(
     if (!dataText) return
 
     const event = JSON.parse(dataText) as CareerChatStreamEvent
+    if (event.type === 'phase') {
+      handlers.onPhase?.(event)
+      return
+    }
     if (event.type === 'delta') {
       handlers.onDelta(event)
       return

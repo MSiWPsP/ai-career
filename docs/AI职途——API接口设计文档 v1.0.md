@@ -519,6 +519,19 @@ JWT
 
 ---
 
+## 13.2 流式聊天事件（已实现）
+
+`POST /api/career/chat/stream` 使用相同请求体，以 SSE 返回以下 `data` 对象：
+
+- `phase`：`phase` 为 `KNOWLEDGE_RETRIEVAL` 或 `GENERATING`。仅在本轮启用并触发真实检索时发送前者；当前未提供 `CONTEXT_LOADING` 服务端事件。
+- `delta`：`content` 为模型回复增量。
+- `done`：表示回复已落库；`ragApplied` 表示本轮是否实际使用知识片段，`references` 为实际使用的结构化来源（无来源时为空数组）。
+- `error`：`content` 为失败提示，可沿用原 `clientMessageId` 重试。
+
+流式 `done` 的来源不会包含内部向量标识或完整切片。非流式聊天暂不返回结构化 `references`，但回复正文仍可含服务端追加的参考依据。
+
+---
+
 # 十四、职业规划聊天流程
 
 ```text

@@ -15,6 +15,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -104,7 +105,9 @@ class CareerChatServiceTests {
         List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
 
         assertThat(events).extracting(CareerChatStreamVO::getType)
-                .containsExactly("delta", "delta", "done");
+                .containsExactly("phase", "delta", "delta", "done");
+        assertThat(events.getFirst().getPhase()).isEqualTo("GENERATING");
+        assertThat(events.getLast().getRagApplied()).isFalse();
         assertThat(events).extracting(CareerChatStreamVO::getConversationId).containsOnly(CONVERSATION_ID);
         assertThat(events).extracting(CareerChatStreamVO::getClientMessageId).containsOnly(CLIENT_MESSAGE_ID);
         verify(conversationService).completeTurn(turn, "先掌握数据结构。再练习缓存场景。");
@@ -129,13 +132,66 @@ class CareerChatServiceTests {
 
         List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
 
-        assertThat(events).singleElement().satisfies(event -> {
+        assertThat(events).extracting(CareerChatStreamVO::getType)
+                .containsExactly("phase", "error");
+        assertThat(events.getLast()).satisfies(event -> {
             assertThat(event.getType()).isEqualTo("error");
             assertThat(event.getConversationId()).isEqualTo(CONVERSATION_ID);
             assertThat(event.getClientMessageId()).isEqualTo(CLIENT_MESSAGE_ID);
             assertThat(event.getContent()).isEqualTo("AI服务暂时不可用，请稍后重试");
         });
         verify(conversationService).failTurn(turn);
+    }
+
+    @Test
+    void streamReportsActualRetrievalBeforeQueryAndReturnsStructuredReferences() {
+        CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
+        CareerConversationService conversationService = mock(CareerConversationService.class);
+        CareerChatContextService contextService = mock(CareerChatContextService.class);
+        ChatMemory chatMemory = mock(ChatMemory.class);
+        AtomicBoolean retrievalPhaseObserved = new AtomicBoolean(false);
+        KnowledgeReference reference = new KnowledgeReference("java-backend-capabilities",
+                "Java 后端岗位能力框架", "工程与交付", "AI职途项目知识库");
+        KnowledgeRetrievalService retrieval = new KnowledgeRetrievalService() {
+            @Override
+            public boolean shouldRetrieve(String message) {
+                return true;
+            }
+
+            @Override
+            public KnowledgeRetrievalResult retrieve(String message, CareerChatBusinessContext context) {
+                assertThat(retrievalPhaseObserved).isTrue();
+                return new KnowledgeRetrievalResult("工程能力片段", List.of(reference));
+            }
+        };
+        CareerChatService service = new CareerChatServiceImpl(agent, conversationService, contextService,
+                retrieval, chatMemory, 20);
+        CareerChatDTO request = request("Java 后端需要哪些能力？");
+        CareerChatTurnContext turn = turn(null);
+        when(conversationService.prepareTurn(CONVERSATION_ID, CLIENT_MESSAGE_ID, request.getMessage()))
+                .thenReturn(turn);
+        when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
+        when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
+        when(agent.chatStream(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, "工程能力片段"))
+                .thenReturn(Flux.just("建议补充接口测试。"));
+
+        List<CareerChatStreamVO> events = service.chatStream(request)
+                .doOnNext(event -> {
+                    if ("KNOWLEDGE_RETRIEVAL".equals(event.getPhase())) {
+                        retrievalPhaseObserved.set(true);
+                    }
+                })
+                .collectList().block();
+
+        assertThat(events).extracting(CareerChatStreamVO::getType)
+                .containsExactly("phase", "phase", "delta", "done");
+        assertThat(events.get(0).getPhase()).isEqualTo("KNOWLEDGE_RETRIEVAL");
+        assertThat(events.get(1).getPhase()).isEqualTo("GENERATING");
+        assertThat(events.get(2).getContent()).isEqualTo("建议补充接口测试。");
+        assertThat(events.get(3).getRagApplied()).isTrue();
+        assertThat(events.get(3).getReferences()).containsExactly(reference);
+        verify(conversationService).completeTurn(org.mockito.ArgumentMatchers.eq(turn),
+                org.mockito.ArgumentMatchers.contains("ai-career-knowledge-references"));
     }
 
     @Test
@@ -161,6 +217,8 @@ class CareerChatServiceTests {
         CareerChatVO answer = service.chat(request);
 
         assertThat(answer.getContent()).contains("参考依据", "Java 后端岗位能力框架", "工程与交付");
+        assertThat(KnowledgeRetrievalResult.answerBody(answer.getContent()))
+                .isEqualTo("先把服务开发练扎实。");
         verify(conversationService).completeTurn(turn, answer.getContent());
     }
 

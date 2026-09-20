@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -94,44 +95,63 @@ public class CareerChatServiceImpl implements CareerChatService {
                     CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId()));
         }
 
-        // 流式分片先累积在服务端，只有模型正常结束后才将完整 AI 消息持久化。
-        StringBuilder response = new StringBuilder();
         // Reactor 的错误和取消回调可能竞争触发，原子标记确保失败收尾只执行一次。
         AtomicBoolean finalized = new AtomicBoolean(false);
-        Flux<String> contentFlux;
+        CareerChatBusinessContext businessContext;
         try {
             restoreMemory(turn);
-            CareerChatBusinessContext businessContext = contextService.getCurrentContext();
-            KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
-                    chatDTO.getMessage().trim(), businessContext);
-            contentFlux = careerPlannerAgent.chatStream(
-                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(),
-                    businessContext, knowledge.context());
-            if (knowledge.hasKnowledge()) {
-                contentFlux = contentFlux.concatWithValues(knowledge.citationFooter());
-            }
+            businessContext = contextService.getCurrentContext();
         } catch (RuntimeException exception) {
             failTurn(turn, finalized);
             return Flux.just(CareerChatStreamVO.error(
                     turn.conversationId(), turn.clientMessageId(), "AI服务暂时不可用，请稍后重试"));
         }
 
-        return contentFlux
+        String question = chatDTO.getMessage().trim();
+        Flux<CareerChatStreamVO> retrievalPhase = knowledgeRetrievalService.shouldRetrieve(question)
+                ? Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
+                        CareerChatStreamVO.PHASE_KNOWLEDGE_RETRIEVAL))
+                : Flux.empty();
+        // 阶段事件先输出；随后才在后台执行阻塞式 Embedding/PGVector 检索。
+        return retrievalPhase.concatWith(Flux.defer(() -> generateStream(turn, question, businessContext, finalized))
+                .subscribeOn(Schedulers.boundedElastic()))
+                .doOnCancel(() -> failTurn(turn, finalized));
+    }
+
+    private Flux<CareerChatStreamVO> generateStream(
+            CareerChatTurnContext turn, String question, CareerChatBusinessContext businessContext,
+            AtomicBoolean finalized) {
+        StringBuilder response = new StringBuilder();
+        KnowledgeRetrievalResult knowledge;
+        Flux<String> contentFlux;
+        try {
+            knowledge = knowledgeRetrievalService.retrieve(question, businessContext);
+            contentFlux = careerPlannerAgent.chatStream(turn.userId(), turn.conversationId(), question,
+                    businessContext, knowledge.context());
+        } catch (RuntimeException exception) {
+            failTurn(turn, finalized);
+            return Flux.just(CareerChatStreamVO.error(
+                    turn.conversationId(), turn.clientMessageId(), "AI服务暂时不可用，请稍后重试"));
+        }
+        Flux<CareerChatStreamVO> answer = contentFlux
                 .doOnNext(response::append)
                 .map(content -> CareerChatStreamVO.delta(
                         turn.conversationId(), turn.clientMessageId(), content))
                 .doOnComplete(() -> {
-                    conversationService.completeTurn(turn, response.toString());
+                    conversationService.completeTurn(turn, response + knowledge.citationFooter());
                     finalized.set(true);
                 })
                 // done 事件必须位于持久化成功之后，避免前端显示完成但数据库仍未落库。
-                .concatWithValues(CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId()))
+                .concatWithValues(CareerChatStreamVO.done(
+                        turn.conversationId(), turn.clientMessageId(), knowledge.references()))
                 .onErrorResume(exception -> {
                     failTurn(turn, finalized);
                     return Flux.just(CareerChatStreamVO.error(
                             turn.conversationId(), turn.clientMessageId(), "AI服务暂时不可用，请稍后重试"));
                 })
                 .doOnCancel(() -> failTurn(turn, finalized));
+        return Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
+                CareerChatStreamVO.PHASE_GENERATING)).concatWith(answer);
     }
 
     @Override

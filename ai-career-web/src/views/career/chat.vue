@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   ArrowRight,
@@ -7,8 +7,8 @@ import {
   CircleCheck,
   Clock,
   Close,
-  Connection,
   Delete,
+  Document,
   EditPen,
   Folder,
   Loading,
@@ -16,6 +16,7 @@ import {
   MoreFilled,
   Plus,
   RefreshRight,
+  Search,
   User,
   UserFilled,
 } from '@element-plus/icons-vue'
@@ -36,7 +37,7 @@ import { getProfile } from '../../api/profile'
 import { getSkills } from '../../api/skill'
 import AgentAvatar from '../../components/AgentAvatar.vue'
 import { useCareerChatStore } from '../../stores/careerChat'
-import type { CareerChatSession, CareerPlan, UserProfile, UserSkill } from '../../types/api'
+import type { CareerChatPhase, CareerChatSession, CareerPlan, UserProfile, UserSkill } from '../../types/api'
 import { renderMarkdown } from '../../utils/markdown'
 
 const router = useRouter()
@@ -53,9 +54,9 @@ const profile = ref<UserProfile>()
 const skills = ref<UserSkill[]>([])
 const currentPlan = ref<CareerPlan>()
 const planGenerating = ref(false)
-const thinkingStep = ref(0)
+const processingPhase = ref<CareerChatPhase | null>(null)
+const ragStepVisible = ref(false)
 let activeRequestController: AbortController | undefined
-let thinkingTimer: number | undefined
 
 const activeSession = computed(() =>
   sessions.value.find((item) => item.conversationId === conversationId.value),
@@ -86,23 +87,31 @@ const quickQuestions = [
   'Redis 和微服务应该先学哪个？',
 ]
 
-const thinkingSteps = [
+const thinkingTitle = computed(() => {
+  if (processingPhase.value === 'KNOWLEDGE_RETRIEVAL') return '正在检索职业知识库'
+  if (processingPhase.value === 'GENERATING') return '正在生成个性化建议'
+  return '正在读取职业与会话上下文'
+})
+const thinkingSteps = computed(() => [
   {
-    label: '读取成长档案',
-    detail: '同步职业画像、技能与当前目标',
+    label: '读取职业与会话上下文',
+    detail: '同步职业画像、技能、规划与近期对话',
     icon: UserFilled,
+    state: processingPhase.value ? 'completed' : 'active',
   },
-  {
-    label: '融合会话上下文',
-    detail: '关联近期对话与当前职业规划',
-    icon: Connection,
-  },
+  ...(ragStepVisible.value ? [{
+    label: '检索职业知识库',
+    detail: '仅在本次问题触发真实检索时执行',
+    icon: Search,
+    state: processingPhase.value === 'KNOWLEDGE_RETRIEVAL' ? 'active' : 'completed',
+  }] : []),
   {
     label: '生成个性化建议',
-    detail: '组织判断依据与可执行的下一步',
+    detail: '结合可用依据组织下一步行动',
     icon: MagicStick,
+    state: processingPhase.value === 'GENERATING' ? 'active' : 'pending',
   },
-]
+])
 
 const careerStageLabel: Record<string, string> = {
   EXPLORING: '探索方向',
@@ -118,26 +127,9 @@ onMounted(async () => {
   await scrollToBottom()
 })
 
-watch(waitingForFirstToken, (waiting) => {
-  stopThinkingProgress()
-  thinkingStep.value = 0
-  if (!waiting) return
-
-  thinkingTimer = window.setInterval(() => {
-    thinkingStep.value = Math.min(thinkingStep.value + 1, thinkingSteps.length - 1)
-  }, 1200)
-}, { immediate: true })
-
 onBeforeUnmount(() => {
   activeRequestController?.abort()
-  stopThinkingProgress()
 })
-
-function stopThinkingProgress() {
-  if (thinkingTimer === undefined) return
-  window.clearInterval(thinkingTimer)
-  thinkingTimer = undefined
-}
 
 async function loadContext() {
   contextLoading.value = true
@@ -240,6 +232,8 @@ async function send(content = message.value, retryClientMessageId?: string) {
     return
   }
   const clientMessageId = retryClientMessageId || crypto.randomUUID()
+  processingPhase.value = null
+  ragStepVisible.value = false
   careerChatStore.startSending(question, clientMessageId)
   message.value = ''
   await scrollToBottom()
@@ -250,13 +244,25 @@ async function send(content = message.value, retryClientMessageId?: string) {
     await streamCareerPlannerChat(
       { conversationId: currentConversationId, clientMessageId, message: question },
       {
+        onPhase(event) {
+          if (event.phase === 'KNOWLEDGE_RETRIEVAL') {
+            ragStepVisible.value = true
+            processingPhase.value = event.phase
+          } else if (event.phase === 'GENERATING') {
+            processingPhase.value = event.phase
+          }
+        },
         onDelta(event) {
           careerChatStore.appendAssistantMessage(event.clientMessageId || clientMessageId, event.content || '')
           void scrollToBottom()
         },
         onDone(event) {
           completed = true
-          careerChatStore.finishSending(event.conversationId, event.clientMessageId || clientMessageId)
+          careerChatStore.finishSending(
+            event.conversationId,
+            event.clientMessageId || clientMessageId,
+            event.ragApplied ? event.references ?? [] : [],
+          )
         },
       },
       { signal: activeRequestController.signal },
@@ -467,6 +473,22 @@ async function handlePlanAction() {
                 v-html="renderMarkdown(item.content)"
               />
               <p v-else>{{ item.content }}</p>
+              <div v-if="item.role === 'assistant' && item.references?.length" class="knowledge-sources">
+                <div class="knowledge-sources-heading">
+                  <el-icon><Document /></el-icon>
+                  <span>本次参考依据</span>
+                  <small>{{ item.references.length }} 条</small>
+                </div>
+                <ol>
+                  <li v-for="(reference, index) in item.references" :key="`${reference.documentId || reference.title}-${index}`">
+                    <span class="source-number">{{ String(index + 1).padStart(2, '0') }}</span>
+                    <span class="source-detail">
+                      <strong>《{{ reference.title }}》</strong>
+                      <small>{{ reference.section || reference.sourceName || '职业知识库' }}</small>
+                    </span>
+                  </li>
+                </ol>
+              </div>
             </div>
           </article>
 
@@ -477,19 +499,19 @@ async function handlePlanAction() {
                 <span class="thinking-spinner"><el-icon><Loading /></el-icon></span>
                 <span>
                   <small>AI 职业规划师</small>
-                  <strong>正在构建个性化回答</strong>
+                  <strong>{{ thinkingTitle }}</strong>
                 </span>
-                <em>智能分析中</em>
+                <em>实时进度</em>
               </div>
               <div class="thinking-steps">
                 <div
-                  v-for="(step, index) in thinkingSteps"
+                  v-for="step in thinkingSteps"
                   :key="step.label"
                   class="thinking-step"
-                  :class="{ active: index === thinkingStep, completed: index < thinkingStep }"
+                  :class="step.state"
                 >
                   <span class="thinking-step-icon">
-                    <el-icon v-if="index < thinkingStep"><CircleCheck /></el-icon>
+                    <el-icon v-if="step.state === 'completed'"><CircleCheck /></el-icon>
                     <el-icon v-else><component :is="step.icon" /></el-icon>
                   </span>
                   <span>
@@ -498,7 +520,7 @@ async function handlePlanAction() {
                   </span>
                 </div>
               </div>
-              <p class="thinking-note"><i></i> 上下文就绪后将立即开始流式输出</p>
+              <p class="thinking-note"><i></i> 阶段状态由服务端实际处理事件更新</p>
             </div>
           </article>
 
@@ -679,6 +701,17 @@ async function handlePlanAction() {
 .markdown-content :deep(th) { color: var(--text); background: #f3f7fc; }
 .markdown-content :deep(hr) { margin: 14px 0; border: 0; border-top: 1px solid var(--line); }
 .markdown-content.streaming-content :deep(> :last-child)::after { display: inline-block; width: 2px; height: 1em; margin-left: 3px; background: var(--primary); content: ''; vertical-align: -2px; animation: cursor-blink 0.8s steps(1) infinite; }
+.knowledge-sources { margin-top: 15px; padding-top: 12px; border-top: 1px solid #dce7f4; }
+.knowledge-sources-heading { display: flex; align-items: center; gap: 7px; color: #345a91; font-size: 11px; font-weight: 800; }
+.knowledge-sources-heading .el-icon { font-size: 14px; }
+.knowledge-sources-heading small { margin-left: auto; color: #8194ac; font-size: 10px; font-weight: 600; }
+.knowledge-sources ol { display: grid; margin: 9px 0 0; padding: 0; gap: 6px; list-style: none; }
+.knowledge-sources li { display: flex; min-width: 0; align-items: flex-start; gap: 9px; padding: 9px 10px; border: 1px solid #d8e7f8; border-radius: 8px; background: #f6faff; }
+.source-number { flex: 0 0 auto; color: #6b91c9; font-size: 10px; font-weight: 800; line-height: 1.5; }
+.source-detail { min-width: 0; }
+.source-detail strong, .source-detail small { display: block; overflow-wrap: anywhere; }
+.source-detail strong { color: #25456f; font-size: 11px; font-weight: 700; }
+.source-detail small { margin-top: 3px; color: #788ba3; font-size: 10px; }
 .chat-message.user { margin-left: auto; flex-direction: row-reverse; }
 .chat-message.user .message-avatar { border-color: var(--line); color: var(--primary-dark); background: #edf2f7; }
 .chat-message.user .message-bubble { border-color: #cbdcf4; border-radius: 12px 4px 12px 12px; background: var(--primary-soft); }
@@ -700,6 +733,7 @@ async function handlePlanAction() {
 .thinking-step { display: grid; grid-template-columns: 27px minmax(0, 1fr); align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid transparent; border-radius: 8px; color: #8795a8; transition: border-color 160ms ease, color 160ms ease, background 160ms ease; }
 .thinking-step.active { border-color: #c9daf4; color: var(--primary-dark); background: rgb(255 255 255 / 82%); box-shadow: 0 5px 15px rgb(23 70 154 / 6%); }
 .thinking-step.completed { color: #55708f; }
+.thinking-step.pending { color: #97a5b7; }
 .thinking-step-icon { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid #d8e2ef; border-radius: 8px; background: #f5f8fc; font-size: 13px; }
 .thinking-step.active .thinking-step-icon { border-color: #a9c4ee; color: #fff; background: var(--primary); box-shadow: 0 4px 10px rgb(37 99 235 / 18%); }
 .thinking-step.completed .thinking-step-icon { border-color: #a7d9c9; color: #147a63; background: #eaf8f3; }

@@ -1,13 +1,17 @@
 package com.xucheng.aicareer.vo;
 
+import com.xucheng.aicareer.service.model.KnowledgeReference;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * SSE 职业规划聊天事件。
  *
- * <p>delta 携带文本增量，done 表示本轮已完整落库，error 表示本轮失败且可以使用原 clientMessageId 重试。</p>
+ * <p>phase 是服务端真实开始的处理阶段；delta 携带文本增量，done 表示本轮已完整落库，
+ * error 表示本轮失败且可以使用原 clientMessageId 重试。</p>
  */
 @Data
 @Builder
@@ -15,11 +19,17 @@ import lombok.Data;
 public class CareerChatStreamVO {
 
     public static final String TYPE_DELTA = "delta";
+    public static final String TYPE_PHASE = "phase";
     public static final String TYPE_DONE = "done";
     public static final String TYPE_ERROR = "error";
+    public static final String PHASE_KNOWLEDGE_RETRIEVAL = "KNOWLEDGE_RETRIEVAL";
+    public static final String PHASE_GENERATING = "GENERATING";
 
-    @Schema(description = "事件类型", allowableValues = {TYPE_DELTA, TYPE_DONE, TYPE_ERROR})
+    @Schema(description = "事件类型", allowableValues = {TYPE_PHASE, TYPE_DELTA, TYPE_DONE, TYPE_ERROR})
     private String type;
+
+    @Schema(description = "真实处理阶段，仅 phase 事件提供")
+    private String phase;
 
     @Schema(description = "会话标识", example = "career:10001:2c08d11b-88b9-4d63-8cc3-0a79d86e4695")
     private String conversationId;
@@ -29,6 +39,21 @@ public class CareerChatStreamVO {
 
     @Schema(description = "本次增量文本或错误提示")
     private String content;
+
+    @Schema(description = "本轮是否实际使用知识片段，仅 done 事件提供")
+    private Boolean ragApplied;
+
+    @Schema(description = "本轮实际使用且进入 Prompt 的知识来源，仅 done 事件提供")
+    private List<KnowledgeReference> references;
+
+    public static CareerChatStreamVO phase(String conversationId, String clientMessageId, String phase) {
+        return CareerChatStreamVO.builder()
+                .type(TYPE_PHASE)
+                .phase(phase)
+                .conversationId(conversationId)
+                .clientMessageId(clientMessageId)
+                .build();
+    }
 
     public static CareerChatStreamVO delta(String conversationId, String content) {
         return delta(conversationId, null, content);
@@ -48,10 +73,17 @@ public class CareerChatStreamVO {
     }
 
     public static CareerChatStreamVO done(String conversationId, String clientMessageId) {
+        return done(conversationId, clientMessageId, List.of());
+    }
+
+    public static CareerChatStreamVO done(
+            String conversationId, String clientMessageId, List<KnowledgeReference> references) {
         return CareerChatStreamVO.builder()
                 .type(TYPE_DONE)
                 .conversationId(conversationId)
                 .clientMessageId(clientMessageId)
+                .ragApplied(!references.isEmpty())
+                .references(List.copyOf(references))
                 .build();
     }
 

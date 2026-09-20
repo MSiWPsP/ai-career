@@ -88,6 +88,7 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
         }
     }
 
+    @Override
     public boolean shouldRetrieve(String message) {
         if (message == null || message.isBlank() || LOCAL_ONLY.matcher(message).find()) {
             return false;

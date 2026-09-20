@@ -10,6 +10,7 @@ import com.xucheng.aicareer.mapper.CareerChatSessionMapper;
 import com.xucheng.aicareer.service.CareerConversationService;
 import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
+import com.xucheng.aicareer.service.model.KnowledgeRetrievalResult;
 import com.xucheng.aicareer.utils.UserContext;
 import com.xucheng.aicareer.vo.CareerChatMessageVO;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
@@ -222,7 +223,8 @@ public class CareerConversationServiceImpl implements CareerConversationService 
 
         LocalDateTime now = LocalDateTime.now();
         session.setMessageCount((session.getMessageCount() == null ? 0 : session.getMessageCount()) + 2);
-        session.setLastMessage(abbreviate(assistantContent.trim(), LAST_MESSAGE_CODE_POINT_LIMIT));
+        session.setLastMessage(abbreviate(
+                KnowledgeRetrievalResult.answerBody(assistantContent).trim(), LAST_MESSAGE_CODE_POINT_LIMIT));
         session.setLastMessageAt(now);
         session.setUpdateTime(now);
         sessionMapper.updateById(session);

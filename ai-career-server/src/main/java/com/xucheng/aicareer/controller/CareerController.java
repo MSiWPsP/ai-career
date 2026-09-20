@@ -53,7 +53,7 @@ public class CareerController {
     }
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "与AI职业规划师流式聊天", description = "通过SSE依次返回delta、done或error事件，每次请求读取最新职业画像、技能和当前规划，并按当前用户保持近期对话记忆")
+    @Operation(summary = "与AI职业规划师流式聊天", description = "通过SSE返回真实处理阶段phase、文本增量delta、带知识来源的done或error事件；每次请求读取最新职业画像、技能和当前规划，并按当前用户保持近期对话记忆")
     public Flux<ServerSentEvent<CareerChatStreamVO>> chatStream(@Valid @RequestBody CareerChatDTO chatDTO) {
         // Service 返回领域事件，Controller 在传输边界转换为标准 SSE 事件。
         return careerChatService.chatStream(chatDTO)

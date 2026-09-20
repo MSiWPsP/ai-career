@@ -99,13 +99,24 @@ export interface CareerChatResponse {
   content: string
 }
 
-export type CareerChatStreamEventType = 'delta' | 'done' | 'error'
+export interface CareerKnowledgeReference {
+  documentId: string
+  title: string
+  section: string
+  sourceName: string
+}
+
+export type CareerChatPhase = 'KNOWLEDGE_RETRIEVAL' | 'GENERATING'
+export type CareerChatStreamEventType = 'phase' | 'delta' | 'done' | 'error'
 
 export interface CareerChatStreamEvent {
   type: CareerChatStreamEventType
+  phase?: CareerChatPhase
   conversationId: string
   clientMessageId: string
   content?: string
+  ragApplied?: boolean
+  references?: CareerKnowledgeReference[]
 }
 
 export interface CareerChatSession {

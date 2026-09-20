@@ -1,7 +1,8 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import type { CareerChatHistoryMessage } from '../types/api'
+import type { CareerChatHistoryMessage, CareerKnowledgeReference } from '../types/api'
 import { useAuthStore } from './auth'
+import { splitCareerKnowledgeSources } from '../utils/rag'
 
 export type CareerChatMessageStatus = 'sending' | 'completed' | 'failed'
 
@@ -10,6 +11,7 @@ export interface CareerChatMessage {
   clientMessageId?: string
   role: 'assistant' | 'user'
   content: string
+  references?: CareerKnowledgeReference[]
   status: CareerChatMessageStatus
 }
 
@@ -101,9 +103,21 @@ export const useCareerChatStore = defineStore('careerChat', () => {
     target.content += content
   }
 
-  function finishSending(nextConversationId: string, clientMessageId: string) {
+  function finishSending(
+    nextConversationId: string,
+    clientMessageId: string,
+    references: CareerKnowledgeReference[] = [],
+  ) {
     conversationId.value = nextConversationId
     localStorage.setItem(activeStorageKey, nextConversationId)
+    const assistant = messages.value.find(
+      (item) => item.role === 'assistant' && item.clientMessageId === clientMessageId,
+    )
+    if (assistant) {
+      const parsed = splitCareerKnowledgeSources(assistant.content)
+      assistant.content = parsed.body
+      assistant.references = references.length ? references : parsed.references
+    }
     messages.value
       .filter((item) => item.clientMessageId === clientMessageId)
       .forEach((item) => { item.status = 'completed' })
@@ -162,11 +176,15 @@ function welcomeMessages(): CareerChatMessage[] {
 }
 
 function toDisplayMessage(message: CareerChatHistoryMessage): CareerChatMessage {
+  const parsed = message.role === 'assistant'
+    ? splitCareerKnowledgeSources(message.content)
+    : { body: message.content, references: [] }
   return {
     id: `server:${message.id}`,
     clientMessageId: message.clientMessageId,
     role: message.role,
-    content: message.content,
+    content: parsed.body,
+    references: parsed.references,
     status: message.status === 1 ? 'completed' : 'failed',
   }
 }
