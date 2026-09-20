@@ -1,0 +1,15 @@
+{"question":"Java 后端开发要掌握哪些核心能力？","expectedDocument":"java-backend-capabilities","retrieve":true}
+{"question":"我会 Java 基础，但缺少项目，下一步先做什么？","expectedDocument":"backend-learning-path","retrieve":true}
+{"question":"后端开发的学习顺序是什么？","expectedDocument":"backend-learning-path","retrieve":true}
+{"question":"准备 Java 后端实习简历要写哪些证据？","expectedDocument":"internship-preparation","retrieve":true}
+{"question":"项目没有性能数据，简历里能写提升百分比吗？","expectedDocument":"project-evidence","retrieve":true}
+{"question":"团队项目怎样说明自己的贡献？","expectedDocument":"project-evidence","retrieve":true}
+{"question":"我在后端和前端之间犹豫，怎么选择？","expectedDocument":"career-decision","retrieve":true}
+{"question":"大学生如何低成本验证职业方向？","expectedDocument":"career-decision","retrieve":true}
+{"question":"面试后应该怎样复盘？","expectedDocument":"internship-preparation","retrieve":true}
+{"question":"Spring Boot 项目应该具备哪些工程要素？","expectedDocument":"java-backend-capabilities","retrieve":true}
+{"question":"你好","expectedDocument":null,"retrieve":false}
+{"question":"谢谢你的建议","expectedDocument":null,"retrieve":false}
+{"question":"我还有多少未完成任务？","expectedDocument":null,"retrieve":false}
+{"question":"总结我们刚刚的聊天","expectedDocument":null,"retrieve":false}
+{"question":"只根据我的职业画像说说当前目标","expectedDocument":null,"retrieve":false}

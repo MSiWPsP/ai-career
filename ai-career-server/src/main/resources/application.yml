@@ -16,6 +16,7 @@ spring:
   ai:
     model:
       chat: openai
+      embedding: none
     openai:
       base-url: ${AI_BASE_URL:https://ws-o9lujwrkuwzjfx0k.cn-beijing.maas.aliyuncs.com/compatible-mode/v1}
       api-key: ${AI_API_KEY:not-configured}
@@ -24,6 +25,20 @@ spring:
       chat:
         model: ${AI_MODEL:qwen3.7-plus}
         temperature: ${AI_TEMPERATURE:0.4}
+
+ai:
+  rag:
+    enabled: ${AI_RAG_ENABLED:false}
+    import: ${AI_RAG_IMPORT:false}
+    knowledge-directory: ${RAG_KNOWLEDGE_DIR:../docs/知识库}
+    jdbc-url: ${RAG_PG_URL:jdbc:postgresql://127.0.0.1:5432/ai_career_rag}
+    username: ${RAG_PG_USERNAME:postgres}
+    password: ${RAG_PG_PASSWORD:}
+    embedding-base-url: ${RAG_EMBEDDING_BASE_URL:${AI_BASE_URL:https://ws-o9lujwrkuwzjfx0k.cn-beijing.maas.aliyuncs.com/compatible-mode/v1}}
+    embedding-api-key: ${RAG_EMBEDDING_API_KEY:${AI_API_KEY:not-configured}}
+    embedding-model: ${RAG_EMBEDDING_MODEL:text-embedding-v4}
+    embedding-dimension: 1024
+    min-score: ${RAG_MIN_SCORE:0.55}
 
 app:
   jwt:

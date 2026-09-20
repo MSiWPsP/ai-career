@@ -6,9 +6,11 @@ import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
 import com.xucheng.aicareer.service.CareerChatService;
 import com.xucheng.aicareer.service.CareerChatContextService;
 import com.xucheng.aicareer.service.CareerConversationService;
+import com.xucheng.aicareer.service.KnowledgeRetrievalService;
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
+import com.xucheng.aicareer.service.model.KnowledgeRetrievalResult;
 import com.xucheng.aicareer.vo.CareerChatMessageVO;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
 import com.xucheng.aicareer.vo.CareerChatStreamVO;
@@ -37,6 +39,7 @@ public class CareerChatServiceImpl implements CareerChatService {
     private final CareerPlannerAgent careerPlannerAgent;
     private final CareerConversationService conversationService;
     private final CareerChatContextService contextService;
+    private final KnowledgeRetrievalService knowledgeRetrievalService;
     private final ChatMemory careerPlannerChatMemory;
     private final int memoryMessageLimit;
 
@@ -44,11 +47,13 @@ public class CareerChatServiceImpl implements CareerChatService {
             CareerPlannerAgent careerPlannerAgent,
             CareerConversationService conversationService,
             CareerChatContextService contextService,
+            KnowledgeRetrievalService knowledgeRetrievalService,
             @Qualifier("careerPlannerChatMemory") ChatMemory careerPlannerChatMemory,
             @Value("${ai.chat-memory.career.max-messages:20}") int memoryMessageLimit) {
         this.careerPlannerAgent = careerPlannerAgent;
         this.conversationService = conversationService;
         this.contextService = contextService;
+        this.knowledgeRetrievalService = knowledgeRetrievalService;
         this.careerPlannerChatMemory = careerPlannerChatMemory;
         this.memoryMessageLimit = memoryMessageLimit;
     }
@@ -65,8 +70,11 @@ public class CareerChatServiceImpl implements CareerChatService {
         try {
             restoreMemory(turn);
             CareerChatBusinessContext businessContext = contextService.getCurrentContext();
+            KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
+                    chatDTO.getMessage().trim(), businessContext);
             String content = careerPlannerAgent.chat(
-                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(), businessContext);
+                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(),
+                    businessContext, knowledge.context()) + knowledge.citationFooter();
             conversationService.completeTurn(turn, content);
             return toChatVO(turn, content);
         } catch (RuntimeException exception) {
@@ -94,8 +102,14 @@ public class CareerChatServiceImpl implements CareerChatService {
         try {
             restoreMemory(turn);
             CareerChatBusinessContext businessContext = contextService.getCurrentContext();
+            KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
+                    chatDTO.getMessage().trim(), businessContext);
             contentFlux = careerPlannerAgent.chatStream(
-                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(), businessContext);
+                    turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(),
+                    businessContext, knowledge.context());
+            if (knowledge.hasKnowledge()) {
+                contentFlux = contentFlux.concatWithValues(knowledge.citationFooter());
+            }
         } catch (RuntimeException exception) {
             failTurn(turn, finalized);
             return Flux.just(CareerChatStreamVO.error(

@@ -1,0 +1,9 @@
+{
+  "documents": [
+    {"id":"java-backend-capabilities","file":"java-backend-capabilities.md","title":"Java 后端岗位能力框架","category":"CAREER_POSITION","targetPosition":"Java后端开发工程师","sourceType":"PROJECT_ORIGINAL","sourceName":"AI职途项目知识库","version":2,"reviewedAt":"2026-09-20","expiresAt":"2027-03-20"},
+    {"id":"backend-learning-path","file":"backend-learning-path.md","title":"大学生后端开发学习路线","category":"CAREER_PATH","targetPosition":"Java后端开发工程师","sourceType":"PROJECT_ORIGINAL","sourceName":"AI职途项目知识库","version":1,"reviewedAt":"2026-09-20","expiresAt":"2027-03-20"},
+    {"id":"internship-preparation","file":"internship-preparation.md","title":"实习与校招准备清单","category":"CAREER_GUIDANCE","targetPosition":null,"sourceType":"PROJECT_ORIGINAL","sourceName":"AI职途项目知识库","version":1,"reviewedAt":"2026-09-20","expiresAt":"2027-03-20"},
+    {"id":"project-evidence","file":"project-evidence.md","title":"项目实践与能力证据","category":"PROJECT_PRACTICE","targetPosition":null,"sourceType":"PROJECT_ORIGINAL","sourceName":"AI职途项目知识库","version":1,"reviewedAt":"2026-09-20","expiresAt":"2027-03-20"},
+    {"id":"career-decision","file":"career-decision.md","title":"大学生职业方向选择方法","category":"CAREER_GUIDANCE","targetPosition":null,"sourceType":"PROJECT_ORIGINAL","sourceName":"AI职途项目知识库","version":2,"reviewedAt":"2026-09-20","expiresAt":"2027-03-20"}
+  ]
+}

@@ -67,10 +67,21 @@ public class CareerPlannerAgent {
             String conversationId,
             String message,
             CareerChatBusinessContext businessContext) {
+        return chat(userId, conversationId, message, businessContext, "");
+    }
+
+    /** 知识片段由 Service 检索并裁剪；Agent 只把它作为不可信参考数据消费。 */
+    public String chat(
+            Long userId,
+            String conversationId,
+            String message,
+            CareerChatBusinessContext businessContext,
+            String knowledgeContext) {
         long startTime = System.currentTimeMillis();
         try {
             String content = careerPlannerChatClient.prompt()
-                    .system(system -> system.param("careerContext", serializeChatContext(businessContext)))
+                    .system(system -> system.param("careerContext", serializeChatContext(businessContext))
+                            .param("knowledgeContext", knowledgeContext))
                     .user(message)
                     .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()
@@ -102,10 +113,21 @@ public class CareerPlannerAgent {
             String conversationId,
             String message,
             CareerChatBusinessContext businessContext) {
+        return chatStream(userId, conversationId, message, businessContext, "");
+    }
+
+    /** 流式回复与非流式回复使用同一批知识片段，来源尾注由 Service 生成。 */
+    public Flux<String> chatStream(
+            Long userId,
+            String conversationId,
+            String message,
+            CareerChatBusinessContext businessContext,
+            String knowledgeContext) {
         long startTime = System.currentTimeMillis();
         try {
             return careerPlannerChatClient.prompt()
-                    .system(system -> system.param("careerContext", serializeChatContext(businessContext)))
+                    .system(system -> system.param("careerContext", serializeChatContext(businessContext))
+                            .param("knowledgeContext", knowledgeContext))
                     .user(message)
                     .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .stream()

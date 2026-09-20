@@ -47,7 +47,7 @@ public class CareerController {
     private final CareerChatService careerChatService;
 
     @PostMapping("/chat")
-    @Operation(summary = "与AI职业规划师普通聊天", description = "非流式兼容接口，每次请求读取最新职业画像、技能和当前规划，并包含近期ChatMemory；暂不包含Tool Calling或RAG")
+    @Operation(summary = "与AI职业规划师普通聊天", description = "读取最新职业画像、技能和近期记忆；启用RAG时按需检索职业知识，失败时降级为原有聊天")
     public Result<CareerChatVO> chat(@Valid @RequestBody CareerChatDTO chatDTO) {
         return Result.success(careerChatService.chat(chatDTO));
     }

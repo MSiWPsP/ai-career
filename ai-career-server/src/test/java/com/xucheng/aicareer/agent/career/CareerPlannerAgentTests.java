@@ -157,6 +157,25 @@ class CareerPlannerAgentTests {
     }
 
     @Test
+    void chatPassesRetrievedKnowledgeAsReferenceContext() {
+        AtomicReference<Prompt> capturedPrompt = new AtomicReference<>();
+        ChatClient chatClient = ChatClient.builder(prompt -> {
+                    capturedPrompt.set(prompt);
+                    return response("建议补充接口测试。");
+                })
+                .defaultSystem("职业规划规则\n<career_context>{careerContext}</career_context>"
+                        + "\n<knowledge_context>{knowledgeContext}</knowledge_context>")
+                .build();
+        CareerPlannerAgent agent = createAgent(chatClient);
+
+        agent.chat(10001L, "career:10001", "Spring Boot 项目要准备什么？",
+                EMPTY_CONTEXT, "《Java 后端岗位能力框架》· Spring Boot 项目工程要素");
+
+        assertThat(messageTexts(capturedPrompt.get())).anyMatch(text -> text.contains(
+                "<knowledge_context>《Java 后端岗位能力框架》· Spring Boot 项目工程要素</knowledge_context>"));
+    }
+
+    @Test
     void generatePlanReturnsStructuredResultAndIncludesBusinessContext() {
         AtomicReference<Prompt> capturedPrompt = new AtomicReference<>();
         ChatClient generationClient = chatClient(prompt -> {
