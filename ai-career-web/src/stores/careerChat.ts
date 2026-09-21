@@ -2,7 +2,7 @@ import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type { CareerChatHistoryMessage, CareerKnowledgeReference } from '../types/api'
 import { useAuthStore } from './auth'
-import { splitCareerKnowledgeSources } from '../utils/rag'
+import { removeUntrustedCareerKnowledgeMarker, splitCareerKnowledgeSources } from '../utils/rag'
 
 export type CareerChatMessageStatus = 'sending' | 'completed' | 'failed'
 
@@ -118,9 +118,8 @@ export const useCareerChatStore = defineStore('careerChat', () => {
       (item) => item.role === 'assistant' && item.clientMessageId === clientMessageId,
     )
     if (assistant) {
-      const parsed = splitCareerKnowledgeSources(assistant.content)
-      assistant.content = parsed.body
-      assistant.references = references.length ? references : parsed.references
+      assistant.content = removeUntrustedCareerKnowledgeMarker(assistant.content)
+      assistant.references = references
       assistant.ragAttempted ||= ragAttempted || assistant.references.length > 0
     }
     messages.value

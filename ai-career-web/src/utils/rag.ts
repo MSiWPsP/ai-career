@@ -1,9 +1,10 @@
 import type { CareerKnowledgeReference } from '../types/api'
 
 const SOURCE_MARKER = '\n\n<!-- ai-career-knowledge-references -->\n参考依据\n'
+const SOURCE_MARKER_TOKEN = '<!-- ai-career-knowledge-references -->'
 const SOURCE_LINE = /^\d+\. 《([^》\n]+)》(?:·\s*(.+))?$/
 
-/** 只识别服务端写入的标记；普通模型文本即使写了“参考依据”也不会被当作可信来源。 */
+/** 兼容历史消息的文本尾注；旧消息没有独立签名，不能作为审计级来源证明。 */
 export function splitCareerKnowledgeSources(content: string): {
   body: string
   references: CareerKnowledgeReference[]
@@ -25,4 +26,9 @@ export function splitCareerKnowledgeSources(content: string): {
   }
   if (!references.length) return { body: content, references: [] }
   return { body: content.slice(0, markerAt), references }
+}
+
+/** 实时模型文本不是可信引用元数据；仅服务端 done 事件能决定来源卡片。 */
+export function removeUntrustedCareerKnowledgeMarker(content: string): string {
+  return content.replaceAll(SOURCE_MARKER_TOKEN, '')
 }

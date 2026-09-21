@@ -73,9 +73,9 @@ public class CareerChatServiceImpl implements CareerChatService {
             CareerChatBusinessContext businessContext = contextService.getCurrentContext();
             KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
                     chatDTO.getMessage().trim(), businessContext);
-            String content = careerPlannerAgent.chat(
+            String content = KnowledgeRetrievalResult.sanitizeGeneratedAnswer(careerPlannerAgent.chat(
                     turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(),
-                    businessContext, knowledge.context()) + knowledge.citationFooter();
+                    businessContext, knowledge.context())) + knowledge.citationFooter();
             conversationService.completeTurn(turn, content);
             return toChatVO(turn, content);
         } catch (RuntimeException exception) {
@@ -91,8 +91,10 @@ public class CareerChatServiceImpl implements CareerChatService {
                 chatDTO.getConversationId(), chatDTO.getClientMessageId(), chatDTO.getMessage().trim());
         if (turn.replayContent() != null) {
             return Flux.just(
-                    CareerChatStreamVO.delta(turn.conversationId(), turn.clientMessageId(), turn.replayContent()),
-                    CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId()));
+                    CareerChatStreamVO.delta(turn.conversationId(), turn.clientMessageId(),
+                            KnowledgeRetrievalResult.answerBody(turn.replayContent())),
+                    CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId(),
+                            KnowledgeRetrievalResult.storedReferences(turn.replayContent())));
         }
 
         // Reactor 的错误和取消回调可能竞争触发，原子标记确保失败收尾只执行一次。
@@ -138,7 +140,9 @@ public class CareerChatServiceImpl implements CareerChatService {
                 .map(content -> CareerChatStreamVO.delta(
                         turn.conversationId(), turn.clientMessageId(), content))
                 .doOnComplete(() -> {
-                    conversationService.completeTurn(turn, response + knowledge.citationFooter());
+                    conversationService.completeTurn(turn,
+                            KnowledgeRetrievalResult.sanitizeGeneratedAnswer(response.toString())
+                                    + knowledge.citationFooter());
                     finalized.set(true);
                 })
                 // done 事件必须位于持久化成功之后，避免前端显示完成但数据库仍未落库。

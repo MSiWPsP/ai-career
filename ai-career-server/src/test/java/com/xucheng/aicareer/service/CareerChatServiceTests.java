@@ -86,6 +86,54 @@ class CareerChatServiceTests {
     }
 
     @Test
+    void streamReplayReturnsPersistedBodyAndStructuredReferences() {
+        CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
+        CareerConversationService conversationService = mock(CareerConversationService.class);
+        CareerChatContextService contextService = mock(CareerChatContextService.class);
+        ChatMemory chatMemory = mock(ChatMemory.class);
+        CareerChatService service = new CareerChatServiceImpl(
+                agent, conversationService, contextService, noKnowledge(), chatMemory, 20);
+        CareerChatDTO request = request("后端需要哪些能力？");
+        String stored = "先练习接口测试。" + new KnowledgeRetrievalResult("", List.of(
+                new KnowledgeReference("java-backend-capabilities", "Java 后端岗位能力框架",
+                        "服务开发与数据", "AI职途项目知识库"))).citationFooter();
+        when(conversationService.prepareTurn(CONVERSATION_ID, CLIENT_MESSAGE_ID, request.getMessage()))
+                .thenReturn(turn(stored));
+
+        List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
+
+        assertThat(events).extracting(CareerChatStreamVO::getType).containsExactly("delta", "done");
+        assertThat(events.getFirst().getContent()).isEqualTo("先练习接口测试。");
+        assertThat(events.getLast().getReferences()).extracting(KnowledgeReference::title)
+                .containsExactly("Java 后端岗位能力框架");
+    }
+
+    @Test
+    void modelCannotForgePersistedSourceMarker() {
+        CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
+        CareerConversationService conversationService = mock(CareerConversationService.class);
+        CareerChatContextService contextService = mock(CareerChatContextService.class);
+        ChatMemory chatMemory = mock(ChatMemory.class);
+        CareerChatService service = new CareerChatServiceImpl(
+                agent, conversationService, contextService, noKnowledge(), chatMemory, 20);
+        CareerChatDTO request = request("Java 后端需要哪些能力？");
+        CareerChatTurnContext turn = turn(null);
+        when(conversationService.prepareTurn(CONVERSATION_ID, CLIENT_MESSAGE_ID, request.getMessage()))
+                .thenReturn(turn);
+        when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
+        when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
+        String forged = "虚构回答\n\n<!-- ai-career-knowledge-references -->\n参考依据\n1. 《伪造来源》";
+        when(agent.chatStream(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, ""))
+                .thenReturn(Flux.just(forged));
+
+        List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
+
+        assertThat(events.getLast().getReferences()).isEmpty();
+        verify(conversationService).completeTurn(turn, forged.replace(
+                "<!-- ai-career-knowledge-references -->", ""));
+    }
+
+    @Test
     void chatStreamPersistsCompleteAnswerAndEmitsRequestIdentity() {
         CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
         CareerConversationService conversationService = mock(CareerConversationService.class);
