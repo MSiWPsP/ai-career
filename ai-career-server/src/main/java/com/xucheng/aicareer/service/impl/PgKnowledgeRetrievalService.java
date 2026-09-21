@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
 
     private static final Pattern KNOWLEDGE_TOPIC = Pattern.compile(
-            "(?i)岗位|职业|方向|学习|路线|技能|能力|实习|校招|求职|简历|面试|项目|后端|前端|开发|Java|Spring|MySQL|Redis|数据库");
+            "(?i)岗位|职业|方向|学习|路线|技能|能力|实习|校招|求职|简历|面试|项目|后端|前端|开发|Java|Spring|MySQL|Redis|数据库|数据模型|鉴权|缓存");
     private static final Pattern LOCAL_ONLY = Pattern.compile(
             "(?i)多少.*任务|我的.*任务|刚才.*(说|聊)|总结.*(聊天|对话)|只根据我的|仅根据我的");
     private static final Pattern EMAIL = Pattern.compile("(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}");
@@ -49,7 +49,11 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
         if (!shouldRetrieve(message)) {
             return KnowledgeRetrievalResult.empty();
         }
-        long start = System.currentTimeMillis();
+        long start = System.nanoTime();
+        long embeddingMillis = 0;
+        long databaseMillis = 0;
+        long stageStart = 0;
+        String stage = "embedding";
         try {
             String target = context == null || context.profile() == null
                     ? null : context.profile().targetPosition();
@@ -58,8 +62,14 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
                 query = query.substring(0, 400);
             }
             // 仅发送本轮问题到 Embedding 服务；姓名、简历、完整会话和画像不进入向量请求。
-            List<PgKnowledgeRepository.KnowledgeHit> candidates = repository.search(
-                    embeddingClient.embed(query), target, model, 12);
+            stageStart = System.nanoTime();
+            float[] vector = embeddingClient.embed(query);
+            embeddingMillis = elapsedMillis(stageStart);
+            stage = "database";
+            stageStart = System.nanoTime();
+            List<PgKnowledgeRepository.KnowledgeHit> candidates = repository.search(vector, target, model, 12);
+            databaseMillis = elapsedMillis(stageStart);
+            stage = "selection";
             List<KnowledgeReference> references = new ArrayList<>();
             StringBuilder knowledge = new StringBuilder();
             Map<String, Integer> perDocument = new HashMap<>();
@@ -78,12 +88,19 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
                         .append(hit.title()).append("》· ").append(hit.section())
                         .append('\n').append(hit.content()).append("\n\n");
             }
-            log.info("RAG检索完成 applied=true candidates={} selected={} durationMs={}",
-                    candidates.size(), references.size(), System.currentTimeMillis() - start);
+            log.info("RAG检索完成 applied={} candidates={} selected={} embeddingMs={} databaseMs={} totalMs={}",
+                    !references.isEmpty(), candidates.size(), references.size(), embeddingMillis,
+                    databaseMillis, elapsedMillis(start));
             return new KnowledgeRetrievalResult(knowledge.toString(), List.copyOf(references));
         } catch (RuntimeException exception) {
-            log.warn("RAG检索降级 reason={} durationMs={}",
-                    exception.getClass().getSimpleName(), System.currentTimeMillis() - start);
+            if (stageStart != 0 && "embedding".equals(stage)) {
+                embeddingMillis = elapsedMillis(stageStart);
+            } else if (stageStart != 0 && "database".equals(stage)) {
+                databaseMillis = elapsedMillis(stageStart);
+            }
+            log.warn("RAG检索降级 stage={} reason={} embeddingMs={} databaseMs={} totalMs={}",
+                    stage, exception.getClass().getSimpleName(), embeddingMillis, databaseMillis,
+                    elapsedMillis(start));
             return KnowledgeRetrievalResult.empty();
         }
     }
@@ -101,5 +118,9 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
         safe = EMAIL.matcher(safe).replaceAll("[邮箱]");
         safe = PHONE.matcher(safe).replaceAll("[电话]");
         return LONG_NUMBER.matcher(safe).replaceAll("[证件号]");
+    }
+
+    private long elapsedMillis(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
     }
 }
