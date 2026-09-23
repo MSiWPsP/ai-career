@@ -10,6 +10,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +88,8 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
                 }
                 perDocument.put(hit.documentId(), count + 1);
                 references.add(new KnowledgeReference(hit.documentId(), hit.title(),
-                        hit.section(), hit.sourceName()));
+                        hit.section(), hit.sourceName(), hit.documentVersion(), hit.chunkIndex(),
+                        sha256(hit.content())));
                 knowledge.append('[').append(references.size()).append("] 《")
                         .append(hit.title()).append("》· ").append(hit.section())
                         .append('\n').append(hit.content()).append("\n\n");
@@ -123,5 +128,14 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
 
     private long elapsedMillis(long startNanos) {
         return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    private String sha256(String content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(content.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 不可用", exception);
+        }
     }
 }

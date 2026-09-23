@@ -60,4 +60,21 @@ class PgKnowledgeRetrievalServiceTests {
         assertThat(safe).contains("Java 后端", "[姓名]", "[邮箱]", "[电话]")
                 .doesNotContain("张三", "test@example.com", "13812345678");
     }
+
+    @Test
+    void selectedSourceSnapshotCarriesExactChunkProvenance() {
+        when(embeddingClient.embed(anyString())).thenReturn(new float[1024]);
+        when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
+                .thenReturn(List.of(new PgKnowledgeRepository.KnowledgeHit("project-evidence",
+                        "项目实践", "保留工程证据", "知识库", "没有测量记录就不写性能结果。", 0.91, 2, 3)));
+
+        var result = service.retrieve("项目性能结果如何写？", context);
+
+        assertThat(result.references()).singleElement().satisfies(reference -> {
+            assertThat(reference.documentVersion()).isEqualTo(2);
+            assertThat(reference.chunkIndex()).isEqualTo(3);
+            assertThat(reference.contentSha256()).matches("[0-9a-f]{64}");
+        });
+        assertThat(result.context()).contains("没有测量记录就不写性能结果。");
+    }
 }

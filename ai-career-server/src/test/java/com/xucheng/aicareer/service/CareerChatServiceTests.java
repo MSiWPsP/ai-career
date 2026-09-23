@@ -1,6 +1,7 @@
 package com.xucheng.aicareer.service;
 
 import com.xucheng.aicareer.agent.career.CareerPlannerAgent;
+import com.xucheng.aicareer.agent.career.dto.GroundedCareerAnswer;
 import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.service.impl.CareerChatServiceImpl;
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
@@ -202,6 +203,8 @@ class CareerChatServiceTests {
         AtomicBoolean retrievalPhaseObserved = new AtomicBoolean(false);
         KnowledgeReference reference = new KnowledgeReference("java-backend-capabilities",
                 "Java 后端岗位能力框架", "工程与交付", "AI职途项目知识库");
+        String quote = "建议用一个小项目练习接口测试与错误处理。";
+        String knowledgeContext = "[1] 《Java 后端岗位能力框架》· 工程与交付\n" + quote + "\n\n";
         KnowledgeRetrievalService retrieval = new KnowledgeRetrievalService() {
             @Override
             public boolean shouldRetrieve(String message) {
@@ -211,7 +214,7 @@ class CareerChatServiceTests {
             @Override
             public KnowledgeRetrievalResult retrieve(String message, CareerChatBusinessContext context) {
                 assertThat(retrievalPhaseObserved).isTrue();
-                return new KnowledgeRetrievalResult("工程能力片段", List.of(reference));
+                return new KnowledgeRetrievalResult(knowledgeContext, List.of(reference));
             }
         };
         CareerChatService service = new CareerChatServiceImpl(agent, conversationService, contextService,
@@ -222,8 +225,9 @@ class CareerChatServiceTests {
                 .thenReturn(turn);
         when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
         when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
-        when(agent.chat(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, "工程能力片段"))
-                .thenReturn("建议补充接口测试。");
+        when(agent.chatGrounded(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, knowledgeContext))
+                .thenReturn(new GroundedCareerAnswer(
+                        List.of(new GroundedCareerAnswer.SourceExcerpt(1, quote)), List.of()));
 
         List<CareerChatStreamVO> events = service.chatStream(request)
                 .doOnNext(event -> {
@@ -237,7 +241,7 @@ class CareerChatServiceTests {
                 .containsExactly("phase", "phase", "delta", "done");
         assertThat(events.get(0).getPhase()).isEqualTo("KNOWLEDGE_RETRIEVAL");
         assertThat(events.get(1).getPhase()).isEqualTo("GENERATING");
-        assertThat(events.get(2).getContent()).isEqualTo("建议补充接口测试。");
+        assertThat(events.get(2).getContent()).contains(quote);
         assertThat(events.get(3).getRagApplied()).isTrue();
         assertThat(events.get(3).getReferences()).containsExactly(reference);
         verify(conversationService).completeTurn(org.mockito.ArgumentMatchers.eq(turn),
@@ -251,7 +255,9 @@ class CareerChatServiceTests {
         CareerConversationService conversationService = mock(CareerConversationService.class);
         CareerChatContextService contextService = mock(CareerChatContextService.class);
         ChatMemory chatMemory = mock(ChatMemory.class);
-        KnowledgeRetrievalResult knowledge = new KnowledgeRetrievalResult("岗位能力片段",
+        String quote = "先用小项目练习服务开发，再补充接口测试。";
+        KnowledgeRetrievalResult knowledge = new KnowledgeRetrievalResult(
+                "[1] 《Java 后端岗位能力框架》· 工程与交付\n" + quote + "\n\n",
                 List.of(new KnowledgeReference("java-backend-capabilities", "Java 后端岗位能力框架",
                         "工程与交付", "AI职途项目知识库")));
         CareerChatService service = new CareerChatServiceImpl(agent, conversationService, contextService,
@@ -262,14 +268,14 @@ class CareerChatServiceTests {
                 .thenReturn(turn);
         when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
         when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
-        when(agent.chat(10001L, CONVERSATION_ID, "后端需要哪些能力？", BUSINESS_CONTEXT, "岗位能力片段"))
-                .thenReturn("先把服务开发练扎实。");
+        when(agent.chatGrounded(10001L, CONVERSATION_ID, "后端需要哪些能力？", BUSINESS_CONTEXT,
+                knowledge.context())).thenReturn(new GroundedCareerAnswer(
+                List.of(new GroundedCareerAnswer.SourceExcerpt(1, quote)), List.of()));
 
         CareerChatVO answer = service.chat(request);
 
         assertThat(answer.getContent()).contains("参考依据", "Java 后端岗位能力框架", "工程与交付");
-        assertThat(KnowledgeRetrievalResult.answerBody(answer.getContent()))
-                .isEqualTo("先把服务开发练扎实。");
+        assertThat(KnowledgeRetrievalResult.answerBody(answer.getContent())).contains(quote);
         verify(conversationService).completeTurn(turn, answer.getContent(), knowledge.references());
     }
 
@@ -280,7 +286,9 @@ class CareerChatServiceTests {
         CareerChatContextService contextService = mock(CareerChatContextService.class);
         ChatMemory chatMemory = mock(ChatMemory.class);
         KnowledgeReference reference = new KnowledgeReference("project-evidence", "项目证据", "性能记录", "知识库");
-        KnowledgeRetrievalResult knowledge = new KnowledgeRetrievalResult("记录测量过程", List.of(reference));
+        String quote = "没有测量数据时应说明验证方式，不制造性能指标。";
+        KnowledgeRetrievalResult knowledge = new KnowledgeRetrievalResult(
+                "[1] 《项目证据》· 性能记录\n" + quote + "\n\n", List.of(reference));
         CareerChatService service = new CareerChatServiceImpl(agent, conversationService, contextService,
                 (message, context) -> knowledge, chatMemory, 20);
         CareerChatDTO request = request("帮我写项目性能结果");
@@ -289,16 +297,20 @@ class CareerChatServiceTests {
                 .thenReturn(turn);
         when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
         when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
-        when(agent.chat(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, knowledge.context()))
-                .thenReturn("例如缓存上线后 QPS 提升 80%。");
+        when(agent.chatGrounded(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT,
+                knowledge.context())).thenReturn(new GroundedCareerAnswer(
+                List.of(new GroundedCareerAnswer.SourceExcerpt(1, quote)),
+                List.of("建议写成缓存上线后 QPS 提升 80%。")));
 
         List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
 
         assertThat(events).extracting(CareerChatStreamVO::getType)
                 .containsExactly("phase", "delta", "done");
         assertThat(events.get(1).getContent()).doesNotContain("80%", "QPS 提升");
-        assertThat(events.get(2).getReferences()).isEmpty();
-        verify(conversationService).completeTurn(turn, events.get(1).getContent(), List.of());
+        assertThat(events.get(2).getReferences()).containsExactly(reference);
+        assertThat(events.get(1).getContent()).doesNotContain("可选行动");
+        verify(conversationService).completeTurn(org.mockito.ArgumentMatchers.eq(turn),
+                org.mockito.ArgumentMatchers.contains(quote), org.mockito.ArgumentMatchers.eq(List.of(reference)));
         verify(agent, never()).chatStream(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());

@@ -527,6 +527,7 @@ JWT
 - `delta`：`content` 为模型回复增量。
 - `done`：表示回复已落库；`ragApplied` 表示本轮是否实际使用知识片段，`references` 为实际使用的结构化来源（无来源时为空数组）。
 - 会话历史消息的 `references` 来自服务端保存的本轮来源快照；迁移前消息返回 `null`，其文本尾注仅供“历史来源（未验证）”展示。SSE 幂等重放也只使用已保存快照，不从正文恢复可信来源。
+- 新版引用快照可包含 `documentVersion`、`chunkIndex` 和 `contentSha256`，用于将答案的原文摘录核对到本轮实际进入 Prompt 的知识切片；这些字段不是公开文件地址。
 - `error`：`content` 为失败提示，可沿用原 `clientMessageId` 重试。
 
 流式 `done` 的来源不会包含内部向量标识或完整切片。非流式聊天暂不返回结构化 `references`，但回复正文仍可含服务端追加的参考依据。

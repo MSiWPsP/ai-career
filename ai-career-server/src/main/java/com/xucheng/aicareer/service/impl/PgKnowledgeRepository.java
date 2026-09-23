@@ -160,7 +160,7 @@ public class PgKnowledgeRepository {
     public List<KnowledgeHit> search(float[] queryVector, String targetPosition,
                                      String embeddingModel, int limit) {
         String sql = """
-                SELECT document_id, title, section_name, source_name, content,
+                SELECT document_id, document_version, chunk_index, title, section_name, source_name, content,
                        1 - (embedding <=> CAST(? AS vector)) AS score
                 FROM ai_career_knowledge_chunk
                 WHERE active = true AND expires_at >= CURRENT_DATE AND embedding_model = ?
@@ -183,7 +183,8 @@ public class PgKnowledgeRepository {
                 while (rows.next()) {
                     hits.add(new KnowledgeHit(rows.getString("document_id"), rows.getString("title"),
                             rows.getString("section_name"), rows.getString("source_name"),
-                            rows.getString("content"), rows.getDouble("score")));
+                            rows.getString("content"), rows.getDouble("score"),
+                            rows.getInt("document_version"), rows.getInt("chunk_index")));
                 }
             }
             return hits;
@@ -228,6 +229,12 @@ public class PgKnowledgeRepository {
     }
 
     public record KnowledgeHit(String documentId, String title, String section,
-                               String sourceName, String content, double score) {
+                               String sourceName, String content, double score,
+                               Integer documentVersion, Integer chunkIndex) {
+
+        public KnowledgeHit(String documentId, String title, String section,
+                            String sourceName, String content, double score) {
+            this(documentId, title, section, sourceName, content, score, null, null);
+        }
     }
 }

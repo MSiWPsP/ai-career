@@ -73,11 +73,19 @@ public class CareerChatServiceImpl implements CareerChatService {
             CareerChatBusinessContext businessContext = contextService.getCurrentContext();
             KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
                     chatDTO.getMessage().trim(), businessContext);
+            if (knowledge.hasKnowledge()) {
+                GroundedCareerAnswerComposer.Composed composed = GroundedCareerAnswerComposer.compose(
+                        careerPlannerAgent.chatGrounded(turn.userId(), turn.conversationId(),
+                                chatDTO.getMessage().trim(), businessContext, knowledge.context()), knowledge);
+                KnowledgeRetrievalResult cited = new KnowledgeRetrievalResult("", composed.references());
+                String content = composed.content() + cited.citationFooter();
+                conversationService.completeTurn(turn, content, composed.references());
+                return toChatVO(turn, content);
+            }
             String generated = KnowledgeRetrievalResult.sanitizeGeneratedAnswer(careerPlannerAgent.chat(
                     turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(),
                     businessContext, knowledge.context()));
-            RagAnswerFactGuard.Review review = knowledge.hasKnowledge()
-                    || RagAnswerFactGuard.requiresPreflight(chatDTO.getMessage())
+            RagAnswerFactGuard.Review review = RagAnswerFactGuard.requiresPreflight(chatDTO.getMessage())
                     ? RagAnswerFactGuard.review(generated)
                     : new RagAnswerFactGuard.Review(generated, true);
             String content = review.content() + (review.accepted() ? knowledge.citationFooter() : "");
@@ -134,13 +142,35 @@ public class CareerChatServiceImpl implements CareerChatService {
         Flux<String> contentFlux;
         try {
             knowledge = knowledgeRetrievalService.retrieve(question, businessContext);
-            if (knowledge.hasKnowledge() || RagAnswerFactGuard.requiresPreflight(question)) {
+            if (knowledge.hasKnowledge()) {
+                // 结构化摘录先逐字核对所属片段，再一次性发送；模型自报的编号不直接成为来源。
+                GroundedCareerAnswerComposer.Composed composed = GroundedCareerAnswerComposer.compose(
+                        careerPlannerAgent.chatGrounded(turn.userId(), turn.conversationId(), question,
+                                businessContext, knowledge.context()), knowledge);
+                KnowledgeRetrievalResult citedKnowledge = new KnowledgeRetrievalResult("", composed.references());
+                return Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
+                                CareerChatStreamVO.PHASE_GENERATING))
+                        .concatWith(Flux.defer(() -> {
+                            conversationService.completeTurn(turn,
+                                    composed.content() + citedKnowledge.citationFooter(), composed.references());
+                            finalized.set(true);
+                            return Flux.just(CareerChatStreamVO.delta(turn.conversationId(),
+                                            turn.clientMessageId(), composed.content()),
+                                    CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId(),
+                                            composed.references()));
+                        }))
+                        .onErrorResume(exception -> {
+                            failTurn(turn, finalized);
+                            return Flux.just(CareerChatStreamVO.error(turn.conversationId(),
+                                    turn.clientMessageId(), "AI服务暂时不可用，请稍后重试"));
+                        });
+            }
+            if (RagAnswerFactGuard.requiresPreflight(question)) {
                 // RAG 内容先完整生成并校验，任何不可靠分片都不能先通过 SSE 发给用户。
                 String generated = KnowledgeRetrievalResult.sanitizeGeneratedAnswer(careerPlannerAgent.chat(
                         turn.userId(), turn.conversationId(), question, businessContext, knowledge.context()));
                 RagAnswerFactGuard.Review review = RagAnswerFactGuard.review(generated);
-                KnowledgeRetrievalResult citedKnowledge = review.accepted()
-                        ? knowledge : KnowledgeRetrievalResult.empty();
+                KnowledgeRetrievalResult citedKnowledge = KnowledgeRetrievalResult.empty();
                 return Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
                                 CareerChatStreamVO.PHASE_GENERATING))
                         .concatWith(Flux.defer(() -> {

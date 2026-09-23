@@ -3,6 +3,7 @@ package com.xucheng.aicareer.agent.career;
 import com.xucheng.aicareer.agent.career.dto.CareerPlanResult;
 import com.xucheng.aicareer.agent.career.dto.CareerTaskResult;
 import com.xucheng.aicareer.agent.career.dto.RoadmapStage;
+import com.xucheng.aicareer.agent.career.dto.GroundedCareerAnswer;
 import com.xucheng.aicareer.exception.AiServiceException;
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.vo.UserProfileVO;
@@ -68,6 +69,34 @@ public class CareerPlannerAgent {
             String message,
             CareerChatBusinessContext businessContext) {
         return chat(userId, conversationId, message, businessContext, "");
+    }
+
+    /**
+     * 用 Spring AI 结构化输出生成知识依据与可选行动，供 Service 在发送任何文本前核对。
+     * 模型提供的来源编号和摘录均是不可信草稿，不在 Agent 层直接变成引用卡片。
+     */
+    public GroundedCareerAnswer chatGrounded(Long userId, String conversationId, String message,
+                                            CareerChatBusinessContext businessContext, String knowledgeContext) {
+        long startTime = System.currentTimeMillis();
+        try {
+            GroundedCareerAnswer answer = careerPlannerChatClient.prompt()
+                    .system(system -> system.param("careerContext", serializeChatContext(businessContext))
+                            .param("knowledgeContext", knowledgeContext))
+                    .user(message + "\n\n请仅返回结构化回答：excerpts 最多 4 条，每条 sourceIndex 是本轮知识片段的编号，"
+                            + "quote 必须是该片段中连续、逐字相同的 12 至 180 字原文，不能改写或拼接。"
+                            + "optionalActions 最多 3 条，必须以‘可以’或‘建议’开头，只写未来可尝试并验证的行动；"
+                            + "不能写用户已完成的结果、测量数字或未经证实的成效。不要输出其他字段。")
+                    .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+                    .call()
+                    .entity(GroundedCareerAnswer.class);
+            log.info("Agent结构化RAG调用完成 agent=CareerPlannerAgent conversationId={} userId={} model={} durationMs={}",
+                    conversationId, userId, model, System.currentTimeMillis() - startTime);
+            return answer;
+        } catch (Exception exception) {
+            log.warn("Agent结构化RAG调用失败 agent=CareerPlannerAgent conversationId={} userId={} model={} reason={}",
+                    conversationId, userId, model, exception.getClass().getSimpleName());
+            throw new AiServiceException("生成结构化职业咨询回答失败", exception);
+        }
     }
 
     /** 知识片段由 Service 检索并裁剪；Agent 只把它作为不可信参考数据消费。 */
