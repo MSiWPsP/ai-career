@@ -3,6 +3,7 @@ package com.xucheng.aicareer.service;
 import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
 import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
+import com.xucheng.aicareer.service.model.KnowledgeReference;
 import com.xucheng.aicareer.vo.CareerChatMessageVO;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
 
@@ -42,6 +43,12 @@ public interface CareerConversationService {
 
     /** 将本轮用户消息和 AI 回复标记为完成，并更新会话摘要信息。 */
     void completeTurn(CareerChatTurnContext turn, String assistantContent);
+
+    /** 原子保存回答和本轮实际进入 Prompt 的来源快照。 */
+    default void completeTurn(CareerChatTurnContext turn, String assistantContent,
+                              List<KnowledgeReference> references) {
+        completeTurn(turn, assistantContent);
+    }
 
     /** 将尚未完成的用户消息标记为失败，以支持后续安全重试。 */
     void failTurn(CareerChatTurnContext turn);

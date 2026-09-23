@@ -12,6 +12,7 @@ export interface CareerChatMessage {
   role: 'assistant' | 'user'
   content: string
   references?: CareerKnowledgeReference[]
+  referencesVerified?: boolean
   ragAttempted?: boolean
   status: CareerChatMessageStatus
 }
@@ -120,6 +121,7 @@ export const useCareerChatStore = defineStore('careerChat', () => {
     if (assistant) {
       assistant.content = removeUntrustedCareerKnowledgeMarker(assistant.content)
       assistant.references = references
+      assistant.referencesVerified = true
       assistant.ragAttempted ||= ragAttempted || assistant.references.length > 0
     }
     messages.value
@@ -188,8 +190,9 @@ function toDisplayMessage(message: CareerChatHistoryMessage): CareerChatMessage 
     clientMessageId: message.clientMessageId,
     role: message.role,
     content: parsed.body,
-    references: parsed.references,
-    ragAttempted: parsed.references.length > 0,
+    references: message.references ?? parsed.references,
+    referencesVerified: message.references !== null && message.references !== undefined,
+    ragAttempted: (message.references ?? parsed.references).length > 0,
     status: message.status === 1 ? 'completed' : 'failed',
   }
 }

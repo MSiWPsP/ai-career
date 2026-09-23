@@ -53,12 +53,16 @@ class RagAnswerEvaluationTests {
         assertThat(selected).hasSize(selectedIds.size());
         CareerChatBusinessContext context = new CareerChatBusinessContext(null, List.of(), null);
         StringBuilder report = new StringBuilder("# 真实模型回答抽样（待人工复核）\n\n");
+        Path reportPath = requestedIds == null || requestedIds.isBlank()
+                ? REPORT : Path.of("target/rag-answer-eval-selected.md");
 
         for (AnswerCase item : selected) {
             var knowledge = retrievalService.retrieve(item.question(), context);
-            assertThat(knowledge.references()).extracting(KnowledgeReference::documentId)
-                    .as(item.id() + " 目标文档召回")
-                    .contains(item.expectedDocument());
+            if (item.expectedDocument() != null && !item.expectedDocument().isBlank()) {
+                assertThat(knowledge.references()).extracting(KnowledgeReference::documentId)
+                        .as(item.id() + " 目标文档召回")
+                        .contains(item.expectedDocument());
+            }
             String answer = agent.chat(0L, "rag-answer-eval-" + UUID.randomUUID(),
                     item.question(), context, knowledge.context());
             assertThat(answer).isNotBlank();
@@ -69,12 +73,12 @@ class RagAnswerEvaluationTests {
             for (KnowledgeReference reference : knowledge.references()) {
                 report.append("《").append(reference.title()).append("》· ").append(reference.section()).append("；");
             }
-            report.append("\n\n回答：\n\n").append(answer).append("\n\n");
+            report.append("\n\n本轮进入 Prompt 的片段：\n\n")
+                    .append(knowledge.context())
+                    .append("\n\n回答：\n\n").append(answer).append("\n\n");
+            Files.writeString(reportPath, report.toString(), StandardCharsets.UTF_8);
         }
 
-        Path reportPath = requestedIds == null || requestedIds.isBlank()
-                ? REPORT : Path.of("target/rag-answer-eval-selected.md");
-        Files.writeString(reportPath, report.toString(), StandardCharsets.UTF_8);
         System.out.println("RAG 回答抽样已生成: " + reportPath.toAbsolutePath());
     }
 

@@ -59,7 +59,7 @@ class CareerChatServiceTests {
         assertThat(response.getConversationId()).isEqualTo(CONVERSATION_ID);
         assertThat(response.getClientMessageId()).isEqualTo(CLIENT_MESSAGE_ID);
         assertThat(response.getContent()).isEqualTo("建议分三个阶段准备。");
-        verify(conversationService).completeTurn(turn, "建议分三个阶段准备。");
+        verify(conversationService).completeTurn(turn, "建议分三个阶段准备。", List.of());
         verify(chatMemory).clear(CONVERSATION_ID);
         verify(contextService).getCurrentContext();
     }
@@ -98,7 +98,9 @@ class CareerChatServiceTests {
                 new KnowledgeReference("java-backend-capabilities", "Java 后端岗位能力框架",
                         "服务开发与数据", "AI职途项目知识库"))).citationFooter();
         when(conversationService.prepareTurn(CONVERSATION_ID, CLIENT_MESSAGE_ID, request.getMessage()))
-                .thenReturn(turn(stored));
+                .thenReturn(new CareerChatTurnContext(20001L, 10001L, CONVERSATION_ID,
+                        CLIENT_MESSAGE_ID, stored, List.of(new KnowledgeReference("java-backend-capabilities",
+                        "Java 后端岗位能力框架", "服务开发与数据", "AI职途项目知识库"))));
 
         List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
 
@@ -220,8 +222,8 @@ class CareerChatServiceTests {
                 .thenReturn(turn);
         when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
         when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
-        when(agent.chatStream(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, "工程能力片段"))
-                .thenReturn(Flux.just("建议补充接口测试。"));
+        when(agent.chat(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, "工程能力片段"))
+                .thenReturn("建议补充接口测试。");
 
         List<CareerChatStreamVO> events = service.chatStream(request)
                 .doOnNext(event -> {
@@ -239,7 +241,8 @@ class CareerChatServiceTests {
         assertThat(events.get(3).getRagApplied()).isTrue();
         assertThat(events.get(3).getReferences()).containsExactly(reference);
         verify(conversationService).completeTurn(org.mockito.ArgumentMatchers.eq(turn),
-                org.mockito.ArgumentMatchers.contains("ai-career-knowledge-references"));
+                org.mockito.ArgumentMatchers.contains("ai-career-knowledge-references"),
+                org.mockito.ArgumentMatchers.eq(List.of(reference)));
     }
 
     @Test
@@ -267,7 +270,38 @@ class CareerChatServiceTests {
         assertThat(answer.getContent()).contains("参考依据", "Java 后端岗位能力框架", "工程与交付");
         assertThat(KnowledgeRetrievalResult.answerBody(answer.getContent()))
                 .isEqualTo("先把服务开发练扎实。");
-        verify(conversationService).completeTurn(turn, answer.getContent());
+        verify(conversationService).completeTurn(turn, answer.getContent(), knowledge.references());
+    }
+
+    @Test
+    void ragStreamChecksEntireAnswerBeforeAnyDeltaAndDropsUnsafeReferences() {
+        CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
+        CareerConversationService conversationService = mock(CareerConversationService.class);
+        CareerChatContextService contextService = mock(CareerChatContextService.class);
+        ChatMemory chatMemory = mock(ChatMemory.class);
+        KnowledgeReference reference = new KnowledgeReference("project-evidence", "项目证据", "性能记录", "知识库");
+        KnowledgeRetrievalResult knowledge = new KnowledgeRetrievalResult("记录测量过程", List.of(reference));
+        CareerChatService service = new CareerChatServiceImpl(agent, conversationService, contextService,
+                (message, context) -> knowledge, chatMemory, 20);
+        CareerChatDTO request = request("帮我写项目性能结果");
+        CareerChatTurnContext turn = turn(null);
+        when(conversationService.prepareTurn(CONVERSATION_ID, CLIENT_MESSAGE_ID, request.getMessage()))
+                .thenReturn(turn);
+        when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
+        when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
+        when(agent.chat(10001L, CONVERSATION_ID, request.getMessage(), BUSINESS_CONTEXT, knowledge.context()))
+                .thenReturn("例如缓存上线后 QPS 提升 80%。");
+
+        List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
+
+        assertThat(events).extracting(CareerChatStreamVO::getType)
+                .containsExactly("phase", "delta", "done");
+        assertThat(events.get(1).getContent()).doesNotContain("80%", "QPS 提升");
+        assertThat(events.get(2).getReferences()).isEmpty();
+        verify(conversationService).completeTurn(turn, events.get(1).getContent(), List.of());
+        verify(agent, never()).chatStream(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     private KnowledgeRetrievalService noKnowledge() {

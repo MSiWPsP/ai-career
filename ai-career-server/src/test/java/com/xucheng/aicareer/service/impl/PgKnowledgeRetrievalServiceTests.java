@@ -34,6 +34,7 @@ class PgKnowledgeRetrievalServiceTests {
     void routesEngineeringTradeoffQuestionToKnowledge() {
         assertThat(service.shouldRetrieve("如何讲清选择数据模型、鉴权方式和缓存策略的取舍？")).isTrue();
         assertThat(service.shouldRetrieve("我的任务完成率是多少？")).isFalse();
+        assertThat(service.shouldRetrieve("你知道我的年级和目标城市吗？据此给我职业建议。")).isFalse();
     }
 
     @Test

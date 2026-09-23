@@ -73,10 +73,16 @@ public class CareerChatServiceImpl implements CareerChatService {
             CareerChatBusinessContext businessContext = contextService.getCurrentContext();
             KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
                     chatDTO.getMessage().trim(), businessContext);
-            String content = KnowledgeRetrievalResult.sanitizeGeneratedAnswer(careerPlannerAgent.chat(
+            String generated = KnowledgeRetrievalResult.sanitizeGeneratedAnswer(careerPlannerAgent.chat(
                     turn.userId(), turn.conversationId(), chatDTO.getMessage().trim(),
-                    businessContext, knowledge.context())) + knowledge.citationFooter();
-            conversationService.completeTurn(turn, content);
+                    businessContext, knowledge.context()));
+            RagAnswerFactGuard.Review review = knowledge.hasKnowledge()
+                    || RagAnswerFactGuard.requiresPreflight(chatDTO.getMessage())
+                    ? RagAnswerFactGuard.review(generated)
+                    : new RagAnswerFactGuard.Review(generated, true);
+            String content = review.content() + (review.accepted() ? knowledge.citationFooter() : "");
+            conversationService.completeTurn(turn, content,
+                    review.accepted() ? knowledge.references() : List.of());
             return toChatVO(turn, content);
         } catch (RuntimeException exception) {
             conversationService.failTurn(turn);
@@ -94,7 +100,7 @@ public class CareerChatServiceImpl implements CareerChatService {
                     CareerChatStreamVO.delta(turn.conversationId(), turn.clientMessageId(),
                             KnowledgeRetrievalResult.answerBody(turn.replayContent())),
                     CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId(),
-                            KnowledgeRetrievalResult.storedReferences(turn.replayContent())));
+                            turn.replayReferences() == null ? List.of() : turn.replayReferences()));
         }
 
         // Reactor 的错误和取消回调可能竞争触发，原子标记确保失败收尾只执行一次。
@@ -128,6 +134,30 @@ public class CareerChatServiceImpl implements CareerChatService {
         Flux<String> contentFlux;
         try {
             knowledge = knowledgeRetrievalService.retrieve(question, businessContext);
+            if (knowledge.hasKnowledge() || RagAnswerFactGuard.requiresPreflight(question)) {
+                // RAG 内容先完整生成并校验，任何不可靠分片都不能先通过 SSE 发给用户。
+                String generated = KnowledgeRetrievalResult.sanitizeGeneratedAnswer(careerPlannerAgent.chat(
+                        turn.userId(), turn.conversationId(), question, businessContext, knowledge.context()));
+                RagAnswerFactGuard.Review review = RagAnswerFactGuard.review(generated);
+                KnowledgeRetrievalResult citedKnowledge = review.accepted()
+                        ? knowledge : KnowledgeRetrievalResult.empty();
+                return Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
+                                CareerChatStreamVO.PHASE_GENERATING))
+                        .concatWith(Flux.defer(() -> {
+                            conversationService.completeTurn(turn, review.content() + citedKnowledge.citationFooter(),
+                                    citedKnowledge.references());
+                            finalized.set(true);
+                            return Flux.just(CareerChatStreamVO.delta(turn.conversationId(),
+                                            turn.clientMessageId(), review.content()),
+                                    CareerChatStreamVO.done(turn.conversationId(), turn.clientMessageId(),
+                                            citedKnowledge.references()));
+                        }))
+                        .onErrorResume(exception -> {
+                            failTurn(turn, finalized);
+                            return Flux.just(CareerChatStreamVO.error(turn.conversationId(),
+                                    turn.clientMessageId(), "AI服务暂时不可用，请稍后重试"));
+                        });
+            }
             contentFlux = careerPlannerAgent.chatStream(turn.userId(), turn.conversationId(), question,
                     businessContext, knowledge.context());
         } catch (RuntimeException exception) {

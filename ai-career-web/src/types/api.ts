@@ -135,6 +135,7 @@ export interface CareerChatHistoryMessage {
   clientMessageId: string
   role: 'assistant' | 'user'
   content: string
+  references?: CareerKnowledgeReference[] | null
   status: number
   messageOrder: number
   createTime?: string

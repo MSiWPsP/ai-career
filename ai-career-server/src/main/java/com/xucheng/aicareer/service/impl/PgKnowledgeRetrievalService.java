@@ -24,7 +24,8 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
     private static final Pattern KNOWLEDGE_TOPIC = Pattern.compile(
             "(?i)岗位|职业|方向|学习|路线|技能|能力|实习|校招|求职|简历|面试|项目|后端|前端|开发|Java|Spring|MySQL|Redis|数据库|数据模型|鉴权|缓存");
     private static final Pattern LOCAL_ONLY = Pattern.compile(
-            "(?i)多少.*任务|我的.*任务|刚才.*(说|聊)|总结.*(聊天|对话)|只根据我的|仅根据我的");
+            "(?i)多少.*任务|我的.*任务|刚才.*(说|聊)|总结.*(聊天|对话)|只根据我的|仅根据我的|"
+                    + "你(?:知道|记得|了解)我的.*(?:年级|城市|画像|信息)");
     private static final Pattern EMAIL = Pattern.compile("(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}");
     private static final Pattern PHONE = Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)");
     private static final Pattern LONG_NUMBER = Pattern.compile("(?<!\\d)\\d{15,18}[Xx]?(?!\\d)");
