@@ -2,9 +2,9 @@
 {"id":"R002","scenario":"knowledge","question":"Java 集合、异常和泛型应该学到什么程度？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
 {"id":"R003","scenario":"knowledge","question":"准备后端面试时并发写入与慢请求要怎么解释？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
 {"id":"R004","scenario":"knowledge","question":"后端开发为什么还要理解网络请求链路和操作系统线程？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
-{"id":"R005","scenario":"knowledge","question":"Spring Boot 接口开发应包含哪些校验和分层？","expectedDocument":"java-backend-capabilities","expectedSection":"服务开发与数据","retrieve":true}
-{"id":"R006","scenario":"knowledge","question":"学习数据库时 SQL、索引、事务和执行计划各有什么用？","expectedDocument":"java-backend-capabilities","expectedSection":"服务开发与数据","retrieve":true}
-{"id":"R007","scenario":"knowledge","question":"在后端项目中什么时候用 Redis，缓存失效后怎么办？","expectedDocument":"java-backend-capabilities","expectedSection":"服务开发与数据","retrieve":true}
+{"id":"R005","scenario":"knowledge","question":"Spring Boot 接口开发应包含哪些校验和分层？","expectedDocument":"java-backend-capabilities","expectedSection":"服务开发","retrieve":true}
+{"id":"R006","scenario":"knowledge","question":"学习数据库时 SQL、索引、事务和执行计划各有什么用？","expectedDocument":"java-backend-capabilities","expectedSection":"数据库基础","retrieve":true}
+{"id":"R007","scenario":"knowledge","question":"在后端项目中什么时候用 Redis，缓存失效后怎么办？","expectedDocument":"java-backend-capabilities","expectedSection":"缓存取舍","retrieve":true}
 {"id":"R008","scenario":"knowledge","question":"怎样证明自己可以独立交付一个 Java 后端服务？","expectedDocument":"java-backend-capabilities","expectedSection":"工程与交付","retrieve":true}
 {"id":"R009","scenario":"knowledge","question":"后端项目的日志、接口文档、迁移和部署说明为什么重要？","expectedDocument":"java-backend-capabilities","expectedSection":"工程与交付","retrieve":true}
 {"id":"R010","scenario":"knowledge","question":"用于求职的 Spring Boot 项目最少要展示哪些工程要素？","expectedDocument":"java-backend-capabilities","expectedSection":"Spring Boot 项目工程要素","retrieve":true}

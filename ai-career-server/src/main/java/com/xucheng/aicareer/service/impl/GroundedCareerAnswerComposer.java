@@ -29,7 +29,7 @@ final class GroundedCareerAnswerComposer {
 
     static Composed compose(GroundedCareerAnswer draft, KnowledgeRetrievalResult knowledge) {
         if (draft == null || draft.excerpts() == null || draft.excerpts().isEmpty()
-                || draft.excerpts().size() > 4 || draft.optionalActions() == null
+                || draft.excerpts().size() > 6 || draft.optionalActions() == null
                 || draft.optionalActions().size() > 3) {
             return rejected();
         }

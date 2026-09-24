@@ -82,8 +82,10 @@ public class CareerPlannerAgent {
             GroundedCareerAnswer answer = careerPlannerChatClient.prompt()
                     .system(system -> system.param("careerContext", serializeChatContext(businessContext))
                             .param("knowledgeContext", knowledgeContext))
-                    .user(message + "\n\n请仅返回结构化回答：excerpts 最多 4 条，每条 sourceIndex 是本轮知识片段的编号，"
+                    .user(message + "\n\n请仅返回结构化回答：excerpts 最多 6 条，每条 sourceIndex 是本轮知识片段的编号，"
                             + "quote 必须是该片段中连续、逐字相同的 12 至 180 字原文，不能改写或拼接。"
+                            + "问题包含多个方面时，excerpts 应优先分别覆盖不同方面，避免用近义摘录重复占位；"
+                            + "片段没有覆盖的方面不要补充事实。"
                             + "optionalActions 最多 3 条，必须以‘可以’或‘建议’开头，只写未来可尝试并验证的行动；"
                             + "不能写用户已完成的结果、测量数字或未经证实的成效。不要输出其他字段。")
                     .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))

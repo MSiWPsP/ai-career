@@ -77,4 +77,74 @@ class PgKnowledgeRetrievalServiceTests {
         });
         assertThat(result.context()).contains("没有测量记录就不写性能结果。");
     }
+
+    @Test
+    void multiIntentPlanMergesDifferentSectionsFromSameDocument() {
+        KnowledgeQueryPlanner planner = mock(KnowledgeQueryPlanner.class);
+        when(planner.plan("简历、投递和面试怎么安排？")).thenReturn(List.of(
+                "简历、投递和面试怎么安排？", "实习简历 可验证材料", "实习投递 复盘", "实习面试 真实案例"));
+        when(embeddingClient.embed(anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(0);
+            float[] vector = new float[1024];
+            vector[0] = query.contains("简历") && query.contains("可验证") ? 1
+                    : query.contains("投递") && query.contains("复盘") ? 2
+                    : query.contains("面试") && query.contains("真实案例") ? 3 : 0;
+            return vector;
+        });
+        when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
+                .thenAnswer(invocation -> {
+                    int queryIndex = Math.round(((float[]) invocation.getArgument(0))[0]);
+                    return switch (queryIndex) {
+                        case 1 -> List.of(hit("准备可验证材料", 1, 0.90));
+                        case 2 -> List.of(hit("建立投递与复盘节奏", 2, 0.89));
+                        case 3 -> List.of(hit("面试准备", 3, 0.88));
+                        default -> List.of(hit("先明确目标与约束", 0, 0.91));
+                    };
+                });
+        PgKnowledgeRetrievalService expanded = new PgKnowledgeRetrievalService(
+                repository, embeddingClient, "text-embedding-v4", 0.55, planner);
+
+        var result = expanded.retrieve("简历、投递和面试怎么安排？", context);
+
+        assertThat(result.references()).extracting(reference -> reference.section())
+                .containsExactly("先明确目标与约束", "准备可验证材料", "建立投递与复盘节奏", "面试准备");
+    }
+
+    @Test
+    void supplementalQueryFailureKeepsOriginalAndOtherSupplementalResults() {
+        KnowledgeQueryPlanner planner = mock(KnowledgeQueryPlanner.class);
+        when(planner.plan("简历、投递和面试怎么安排？")).thenReturn(List.of(
+                "简历、投递和面试怎么安排？", "实习简历 可验证材料", "实习投递 复盘", "实习面试 真实案例"));
+        when(embeddingClient.embed(anyString())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(0);
+            if (query.contains("可验证材料")) {
+                throw new IllegalStateException("supplement unavailable");
+            }
+            float[] vector = new float[1024];
+            vector[0] = query.contains("投递") && query.contains("复盘") ? 2
+                    : query.contains("面试") && query.contains("真实案例") ? 3 : 0;
+            return vector;
+        });
+        when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
+                .thenAnswer(invocation -> {
+                    int queryIndex = Math.round(((float[]) invocation.getArgument(0))[0]);
+                    return switch (queryIndex) {
+                        case 2 -> List.of(hit("建立投递与复盘节奏", 2, 0.89));
+                        case 3 -> List.of(hit("面试准备", 3, 0.88));
+                        default -> List.of(hit("先明确目标与约束", 0, 0.91));
+                    };
+                });
+        PgKnowledgeRetrievalService expanded = new PgKnowledgeRetrievalService(
+                repository, embeddingClient, "text-embedding-v4", 0.55, planner);
+
+        var result = expanded.retrieve("简历、投递和面试怎么安排？", context);
+
+        assertThat(result.references()).extracting(reference -> reference.section())
+                .containsExactly("先明确目标与约束", "建立投递与复盘节奏", "面试准备");
+    }
+
+    private PgKnowledgeRepository.KnowledgeHit hit(String section, int chunkIndex, double score) {
+        return new PgKnowledgeRepository.KnowledgeHit("internship-preparation", "实习与校招准备清单",
+                section, "AI职途项目知识库", section + "的正文内容需要足够长。", score, 1, chunkIndex);
+    }
 }
