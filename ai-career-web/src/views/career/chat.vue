@@ -488,7 +488,7 @@ async function handlePlanAction() {
               <div v-if="item.role === 'assistant' && item.references?.length" class="knowledge-sources">
                 <div class="knowledge-sources-heading">
                   <el-icon><Document /></el-icon>
-                  <span>本次参考依据</span>
+                  <span>{{ item.referencesVerified ? '本次参考依据' : '历史来源（未验证）' }}</span>
                   <small>{{ item.references.length }} 条</small>
                 </div>
                 <ol>
