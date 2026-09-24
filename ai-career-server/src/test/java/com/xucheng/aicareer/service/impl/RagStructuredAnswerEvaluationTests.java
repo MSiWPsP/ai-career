@@ -44,14 +44,20 @@ class RagStructuredAnswerEvaluationTests {
         CareerChatBusinessContext context = new CareerChatBusinessContext(null, List.of(), null);
         Path reportPath = Path.of("target/rag-structured-answer-eval.md");
         StringBuilder report = new StringBuilder("# 结构化 RAG 回答抽样\n\n");
+        int groundedCases = 0;
+        int noKnowledgeCases = 0;
         for (AnswerCase item : cases) {
             var knowledge = retrieval.retrieve(item.question(), context);
             if (!knowledge.hasKnowledge()) {
+                assertThat(item.expectedDocument())
+                        .as("%s 预期应命中知识文档", item.id()).isBlank();
+                noKnowledgeCases++;
                 String raw = agent.chat(0L, "rag-structured-eval-" + UUID.randomUUID(),
                         item.question(), context, "");
                 String delivered = RagAnswerFactGuard.requiresPreflight(item.question())
                         ? RagAnswerFactGuard.review(raw).content() : raw;
                 report.append("## ").append(item.id()).append("\n\n问题：").append(item.question())
+                        .append("\n\n人工核对目标：").append(item.expectedFact())
                         .append("\n\n无知识片段，普通聊天交付内容：\n\n")
                         .append(delivered).append("\n\n");
                 Files.writeString(reportPath, report.toString(), StandardCharsets.UTF_8);
@@ -60,12 +66,30 @@ class RagStructuredAnswerEvaluationTests {
             var draft = agent.chatGrounded(0L, "rag-structured-eval-" + UUID.randomUUID(),
                     item.question(), context, knowledge.context());
             var delivered = GroundedCareerAnswerComposer.compose(draft, knowledge);
+            assertThat(delivered.accepted()).as("%s 结构化摘录校验", item.id()).isTrue();
+            assertThat(delivered.references()).extracting(reference -> reference.documentId())
+                    .as("%s 交付回答必须实际引用目标文档", item.id())
+                    .contains(item.expectedDocument());
+            assertThat(delivered.references()).allSatisfy(reference -> {
+                assertThat(reference.documentVersion()).isPositive();
+                assertThat(reference.chunkIndex()).isNotNegative();
+                assertThat(reference.contentSha256()).hasSize(64);
+            });
+            groundedCases++;
             report.append("## ").append(item.id()).append("\n\n问题：").append(item.question())
+                    .append("\n\n人工核对目标：").append(item.expectedFact())
                     .append("\n\n本轮片段：\n\n").append(knowledge.context())
                     .append("\n\n结构校验：").append(delivered.accepted() ? "通过" : "拒绝")
+                    .append("；目标文档引用：通过")
                     .append("\n\n交付回答：\n\n").append(delivered.content()).append("\n\n");
             Files.writeString(reportPath, report.toString(), StandardCharsets.UTF_8);
         }
+        report.append("## 自动校验汇总\n\n")
+                .append("- 有依据并通过逐字摘录、目标文档和来源指纹校验：")
+                .append(groundedCases).append(" 条\n")
+                .append("- 按评测集预期不展示知识来源：").append(noKnowledgeCases).append(" 条\n")
+                .append("- 人工事实核对目标总数：").append(cases.size()).append(" 条\n");
+        Files.writeString(reportPath, report.toString(), StandardCharsets.UTF_8);
         System.out.println("结构化回答抽样已生成: " + reportPath.toAbsolutePath());
     }
 
