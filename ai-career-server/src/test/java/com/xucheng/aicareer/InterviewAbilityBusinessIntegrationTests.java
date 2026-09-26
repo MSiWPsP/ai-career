@@ -14,6 +14,7 @@ import com.xucheng.aicareer.mapper.InterviewReportMapper;
 import com.xucheng.aicareer.mapper.UserMapper;
 import com.xucheng.aicareer.service.AbilityService;
 import com.xucheng.aicareer.service.AuthService;
+import com.xucheng.aicareer.service.CareerToolQueryService;
 import com.xucheng.aicareer.service.InterviewService;
 import com.xucheng.aicareer.utils.UserContext;
 import com.xucheng.aicareer.vo.AbilityRadarVO;
@@ -45,6 +46,7 @@ class InterviewAbilityBusinessIntegrationTests {
     private final AbilityScoreMapper abilityScoreMapper;
     private final InterviewService interviewService;
     private final AbilityService abilityService;
+    private final CareerToolQueryService careerToolQueryService;
 
     @AfterEach
     void clearUserContext() {
@@ -112,8 +114,19 @@ class InterviewAbilityBusinessIntegrationTests {
         assertThat(trend.getAbilityName()).isEqualTo("Redis");
         assertThat(trend.getRecords()).extracting("score").containsExactly(40, 55);
         assertThat(abilityService.getAbilityTrend(null).getAbilityName()).isEqualTo("Redis");
+        assertThat(careerToolQueryService.getCurrentAbilitySnapshot(userId).abilities())
+                .extracting("abilityName")
+                .containsExactly("Redis", "Java");
+        assertThat(careerToolQueryService.getRecentInterviewSnapshot(userId).interviews())
+                .hasSize(2)
+                .first()
+                .satisfies(interview -> {
+                    assertThat(interview.totalScore()).isEqualTo(76);
+                    assertThat(interview.weaknesses()).containsExactly("Redis能力较弱");
+                });
 
-        UserContext.setUserId(createUser());
+        Long otherUserId = createUser();
+        UserContext.setUserId(otherUserId);
         assertThatThrownBy(() -> interviewService.getInterviewById(latestInterview.getId()))
                 .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> interviewService.getInterviewMessages(latestInterview.getId()))
@@ -121,6 +134,8 @@ class InterviewAbilityBusinessIntegrationTests {
         assertThatThrownBy(() -> interviewService.getInterviewReport(latestInterview.getId()))
                 .isInstanceOf(BusinessException.class);
         assertThat(abilityService.getCurrentAbilities()).isEmpty();
+        assertThat(careerToolQueryService.getCurrentAbilitySnapshot(otherUserId).abilities()).isEmpty();
+        assertThat(careerToolQueryService.getRecentInterviewSnapshot(otherUserId).interviews()).isEmpty();
     }
 
     private Long createUser() {

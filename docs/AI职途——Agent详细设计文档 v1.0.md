@@ -578,6 +578,15 @@ public class CareerTaskResult {
 CareerTools
 ```
 
+## 2026-09-26 第一阶段实现说明
+
+- 已使用 Spring AI 2.0.1 `@Tool` 与 `ChatClient.tools(...)` 实现三个只读工具：当前成长任务、能力评分快照、最近模拟面试摘要。
+- 职业画像、技能和当前规划仍由 `CareerChatContextService` 每轮统一加载，避免模型为已经具备的上下文重复调用工具。
+- 下文示例中的 `userId` 是业务语义示意。实际实现不把 `userId` 暴露为模型函数参数，而是由 Service 将已认证用户 ID 放入 Spring AI `ToolContext`，工具再显式按该 ID 查询。
+- Tool 可能在 Reactor 工作线程执行，因此不读取 Web 请求线程的 `UserContext`。当前实现使用 `CareerToolQueryService` 作为显式用户只读边界。
+- 每条工具结果都生成仅限本轮的证据 ID。模型结构化输出中的 `evidenceId` 和事实文本必须与本轮实际工具结果逐字相同，服务端核验完成后才通过 SSE 发送。
+- 尚未开放写工具。规划、任务、画像和面试记录的写入继续由现有 Service 事务边界控制。
+
 ---
 
 # 十七、Tool：获取用户职业画像

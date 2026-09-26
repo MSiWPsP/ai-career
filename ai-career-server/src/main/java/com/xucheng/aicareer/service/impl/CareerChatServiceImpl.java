@@ -1,6 +1,8 @@
 package com.xucheng.aicareer.service.impl;
 
 import com.xucheng.aicareer.agent.career.CareerPlannerAgent;
+import com.xucheng.aicareer.agent.career.dto.GroundedCareerAnswer;
+import com.xucheng.aicareer.agent.career.tool.CareerToolExecutionTrace;
 import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
 import com.xucheng.aicareer.service.CareerChatService;
@@ -21,6 +23,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
@@ -41,22 +44,38 @@ public class CareerChatServiceImpl implements CareerChatService {
     private final CareerConversationService conversationService;
     private final CareerChatContextService contextService;
     private final KnowledgeRetrievalService knowledgeRetrievalService;
+    private final CareerToolIntentRouter toolIntentRouter;
     private final ChatMemory careerPlannerChatMemory;
     private final int memoryMessageLimit;
 
+    @Autowired
     public CareerChatServiceImpl(
             CareerPlannerAgent careerPlannerAgent,
             CareerConversationService conversationService,
             CareerChatContextService contextService,
             KnowledgeRetrievalService knowledgeRetrievalService,
+            CareerToolIntentRouter toolIntentRouter,
             @Qualifier("careerPlannerChatMemory") ChatMemory careerPlannerChatMemory,
             @Value("${ai.chat-memory.career.max-messages:20}") int memoryMessageLimit) {
         this.careerPlannerAgent = careerPlannerAgent;
         this.conversationService = conversationService;
         this.contextService = contextService;
         this.knowledgeRetrievalService = knowledgeRetrievalService;
+        this.toolIntentRouter = toolIntentRouter;
         this.careerPlannerChatMemory = careerPlannerChatMemory;
         this.memoryMessageLimit = memoryMessageLimit;
+    }
+
+    /** 保留给既有单元测试使用；生产环境由 Spring 注入启用开关的路由器。 */
+    public CareerChatServiceImpl(
+            CareerPlannerAgent careerPlannerAgent,
+            CareerConversationService conversationService,
+            CareerChatContextService contextService,
+            KnowledgeRetrievalService knowledgeRetrievalService,
+            ChatMemory careerPlannerChatMemory,
+            int memoryMessageLimit) {
+        this(careerPlannerAgent, conversationService, contextService, knowledgeRetrievalService,
+                new CareerToolIntentRouter(false), careerPlannerChatMemory, memoryMessageLimit);
     }
 
     @Override
@@ -71,12 +90,20 @@ public class CareerChatServiceImpl implements CareerChatService {
         try {
             restoreMemory(turn);
             CareerChatBusinessContext businessContext = contextService.getCurrentContext();
-            KnowledgeRetrievalResult knowledge = knowledgeRetrievalService.retrieve(
-                    chatDTO.getMessage().trim(), businessContext);
-            if (knowledge.hasKnowledge()) {
+            String question = chatDTO.getMessage().trim();
+            boolean useTools = toolIntentRouter.requiresTools(question);
+            KnowledgeRetrievalResult knowledge = toolIntentRouter.isPersonalDataOnly(question)
+                    ? KnowledgeRetrievalResult.empty()
+                    : knowledgeRetrievalService.retrieve(question, businessContext);
+            if (knowledge.hasKnowledge() || useTools) {
+                CareerToolExecutionTrace trace = new CareerToolExecutionTrace();
+                GroundedCareerAnswer draft = useTools
+                        ? careerPlannerAgent.chatGroundedWithTools(turn.userId(), turn.conversationId(),
+                                question, businessContext, knowledge.context(), trace)
+                        : careerPlannerAgent.chatGrounded(turn.userId(), turn.conversationId(),
+                                question, businessContext, knowledge.context());
                 GroundedCareerAnswerComposer.Composed composed = GroundedCareerAnswerComposer.compose(
-                        careerPlannerAgent.chatGrounded(turn.userId(), turn.conversationId(),
-                                chatDTO.getMessage().trim(), businessContext, knowledge.context()), knowledge);
+                        draft, knowledge, trace.snapshot());
                 KnowledgeRetrievalResult cited = new KnowledgeRetrievalResult("", composed.references());
                 String content = composed.content() + cited.citationFooter();
                 conversationService.completeTurn(turn, content, composed.references());
@@ -124,29 +151,39 @@ public class CareerChatServiceImpl implements CareerChatService {
         }
 
         String question = chatDTO.getMessage().trim();
-        Flux<CareerChatStreamVO> retrievalPhase = knowledgeRetrievalService.shouldRetrieve(question)
+        boolean useTools = toolIntentRouter.requiresTools(question);
+        boolean personalDataOnly = toolIntentRouter.isPersonalDataOnly(question);
+        Flux<CareerChatStreamVO> retrievalPhase = !personalDataOnly && knowledgeRetrievalService.shouldRetrieve(question)
                 ? Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
                         CareerChatStreamVO.PHASE_KNOWLEDGE_RETRIEVAL))
                 : Flux.empty();
         // 阶段事件先输出；随后才在后台执行阻塞式 Embedding/PGVector 检索。
-        return retrievalPhase.concatWith(Flux.defer(() -> generateStream(turn, question, businessContext, finalized))
+        return retrievalPhase.concatWith(Flux.defer(() -> generateStream(
+                        turn, question, businessContext, useTools, personalDataOnly, finalized))
                 .subscribeOn(Schedulers.boundedElastic()))
                 .doOnCancel(() -> failTurn(turn, finalized));
     }
 
     private Flux<CareerChatStreamVO> generateStream(
             CareerChatTurnContext turn, String question, CareerChatBusinessContext businessContext,
-            AtomicBoolean finalized) {
+            boolean useTools, boolean personalDataOnly, AtomicBoolean finalized) {
         StringBuilder response = new StringBuilder();
         KnowledgeRetrievalResult knowledge;
         Flux<String> contentFlux;
         try {
-            knowledge = knowledgeRetrievalService.retrieve(question, businessContext);
-            if (knowledge.hasKnowledge()) {
+            knowledge = personalDataOnly
+                    ? KnowledgeRetrievalResult.empty()
+                    : knowledgeRetrievalService.retrieve(question, businessContext);
+            if (knowledge.hasKnowledge() || useTools) {
                 // 结构化摘录先逐字核对所属片段，再一次性发送；模型自报的编号不直接成为来源。
+                CareerToolExecutionTrace trace = new CareerToolExecutionTrace();
+                GroundedCareerAnswer draft = useTools
+                        ? careerPlannerAgent.chatGroundedWithTools(turn.userId(), turn.conversationId(),
+                                question, businessContext, knowledge.context(), trace)
+                        : careerPlannerAgent.chatGrounded(turn.userId(), turn.conversationId(), question,
+                                businessContext, knowledge.context());
                 GroundedCareerAnswerComposer.Composed composed = GroundedCareerAnswerComposer.compose(
-                        careerPlannerAgent.chatGrounded(turn.userId(), turn.conversationId(), question,
-                                businessContext, knowledge.context()), knowledge);
+                        draft, knowledge, trace.snapshot());
                 KnowledgeRetrievalResult citedKnowledge = new KnowledgeRetrievalResult("", composed.references());
                 return Flux.just(CareerChatStreamVO.phase(turn.conversationId(), turn.clientMessageId(),
                                 CareerChatStreamVO.PHASE_GENERATING))

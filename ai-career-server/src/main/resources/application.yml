@@ -17,6 +17,9 @@ spring:
     model:
       chat: openai
       embedding: none
+    tools:
+      limits:
+        max-calls-per-tool-default: ${AI_TOOL_MAX_CALLS_PER_TOOL:2}
     openai:
       base-url: ${AI_BASE_URL:https://ws-o9lujwrkuwzjfx0k.cn-beijing.maas.aliyuncs.com/compatible-mode/v1}
       api-key: ${AI_API_KEY:not-configured}
@@ -27,6 +30,9 @@ spring:
         temperature: ${AI_TEMPERATURE:0.4}
 
 ai:
+  tool-calling:
+    career:
+      enabled: ${AI_CAREER_TOOLS_ENABLED:true}
   rag:
     enabled: ${AI_RAG_ENABLED:true}
     import: ${AI_RAG_IMPORT:false}

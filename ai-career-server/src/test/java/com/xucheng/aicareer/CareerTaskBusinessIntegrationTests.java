@@ -12,6 +12,7 @@ import com.xucheng.aicareer.mapper.UserMapper;
 import com.xucheng.aicareer.service.AuthService;
 import com.xucheng.aicareer.service.CareerPlanService;
 import com.xucheng.aicareer.service.CareerTaskService;
+import com.xucheng.aicareer.service.CareerToolQueryService;
 import com.xucheng.aicareer.utils.UserContext;
 import com.xucheng.aicareer.vo.TaskStatisticsVO;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ class CareerTaskBusinessIntegrationTests {
     private final CareerTaskMapper careerTaskMapper;
     private final CareerPlanService careerPlanService;
     private final CareerTaskService careerTaskService;
+    private final CareerToolQueryService careerToolQueryService;
 
     @AfterEach
     void clearUserContext() {
@@ -79,6 +81,13 @@ class CareerTaskBusinessIntegrationTests {
         assertThat(statistics.getProcessing()).isEqualTo(1);
         assertThat(statistics.getWaiting()).isZero();
         assertThat(statistics.getCompletionRate()).isEqualTo(33);
+        assertThat(careerToolQueryService.getCurrentTaskSnapshot(userId))
+                .satisfies(snapshot -> {
+                    assertThat(snapshot.total()).isEqualTo(3);
+                    assertThat(snapshot.tasks()).extracting("taskName")
+                            .containsExactlyInAnyOrder("复习Java集合", "学习Redis", "了解岗位要求")
+                            .doesNotContain("历史任务");
+                });
 
         TaskStatusDTO processing = new TaskStatusDTO();
         processing.setStatus(1);
@@ -90,6 +99,7 @@ class CareerTaskBusinessIntegrationTests {
                 .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> careerTaskService.getTaskById(waitingTask.getId()))
                 .isInstanceOf(BusinessException.class);
+        assertThat(careerToolQueryService.getCurrentTaskSnapshot(UserContext.getUserId()).total()).isZero();
     }
 
     private Long createUser() {

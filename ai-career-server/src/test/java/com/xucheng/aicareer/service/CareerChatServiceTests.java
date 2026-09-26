@@ -2,8 +2,10 @@ package com.xucheng.aicareer.service;
 
 import com.xucheng.aicareer.agent.career.CareerPlannerAgent;
 import com.xucheng.aicareer.agent.career.dto.GroundedCareerAnswer;
+import com.xucheng.aicareer.agent.career.tool.CareerToolExecutionTrace;
 import com.xucheng.aicareer.dto.CareerChatDTO;
 import com.xucheng.aicareer.service.impl.CareerChatServiceImpl;
+import com.xucheng.aicareer.service.impl.CareerToolIntentRouter;
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
@@ -23,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 class CareerChatServiceTests {
 
@@ -314,6 +317,50 @@ class CareerChatServiceTests {
         verify(agent, never()).chatStream(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void personalTaskQuestionUsesToolEvidenceAndSkipsRagRetrieval() {
+        CareerPlannerAgent agent = mock(CareerPlannerAgent.class);
+        CareerConversationService conversationService = mock(CareerConversationService.class);
+        CareerChatContextService contextService = mock(CareerChatContextService.class);
+        KnowledgeRetrievalService retrieval = mock(KnowledgeRetrievalService.class);
+        ChatMemory chatMemory = mock(ChatMemory.class);
+        CareerChatService service = new CareerChatServiceImpl(agent, conversationService, contextService,
+                retrieval, new CareerToolIntentRouter(true), chatMemory, 20);
+        CareerChatDTO request = request("我还有哪些任务没有完成？");
+        CareerChatTurnContext turn = turn(null);
+        when(conversationService.prepareTurn(CONVERSATION_ID, CLIENT_MESSAGE_ID, request.getMessage()))
+                .thenReturn(turn);
+        when(conversationService.getRecentMemory(10001L, CONVERSATION_ID, 20)).thenReturn(List.of());
+        when(contextService.getCurrentContext()).thenReturn(BUSINESS_CONTEXT);
+        when(agent.chatGroundedWithTools(
+                org.mockito.ArgumentMatchers.eq(10001L),
+                org.mockito.ArgumentMatchers.eq(CONVERSATION_ID),
+                org.mockito.ArgumentMatchers.eq(request.getMessage()),
+                org.mockito.ArgumentMatchers.eq(BUSINESS_CONTEXT),
+                org.mockito.ArgumentMatchers.eq(""),
+                any(CareerToolExecutionTrace.class)))
+                .thenAnswer(invocation -> {
+                    CareerToolExecutionTrace trace = invocation.getArgument(5);
+                    var evidence = trace.record("get_current_career_tasks",
+                            List.of("当前职业规划共有2项成长任务：待开始1项、进行中1项、已完成0项，完成率0%。"));
+                    return new GroundedCareerAnswer(List.of(),
+                            List.of(new GroundedCareerAnswer.ToolExcerpt(
+                                    evidence.getFirst().evidenceId(), evidence.getFirst().text())),
+                            List.of());
+                });
+
+        List<CareerChatStreamVO> events = service.chatStream(request).collectList().block();
+
+        assertThat(events).extracting(CareerChatStreamVO::getType)
+                .containsExactly("phase", "delta", "done");
+        assertThat(events.getFirst().getPhase()).isEqualTo("GENERATING");
+        assertThat(events.get(1).getContent()).contains("本轮读取的平台数据", "待开始1项");
+        assertThat(events.getLast().getReferences()).isEmpty();
+        verify(retrieval, never()).shouldRetrieve(any());
+        verify(retrieval, never()).retrieve(any(), any());
+        verify(conversationService).completeTurn(turn, events.get(1).getContent(), List.of());
     }
 
     private KnowledgeRetrievalService noKnowledge() {

@@ -4,6 +4,8 @@ import com.xucheng.aicareer.agent.career.dto.CareerPlanResult;
 import com.xucheng.aicareer.agent.career.dto.CareerTaskResult;
 import com.xucheng.aicareer.agent.career.dto.RoadmapStage;
 import com.xucheng.aicareer.agent.career.dto.GroundedCareerAnswer;
+import com.xucheng.aicareer.agent.career.tool.CareerReadTools;
+import com.xucheng.aicareer.agent.career.tool.CareerToolExecutionTrace;
 import com.xucheng.aicareer.exception.AiServiceException;
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.vo.UserProfileVO;
@@ -16,6 +18,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
@@ -23,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -41,14 +45,26 @@ public class CareerPlannerAgent {
     private final ChatClient careerPlannerChatClient;
     private final ChatClient careerPlanGenerationChatClient;
     private final ObjectMapper objectMapper;
+    private final CareerReadTools careerReadTools;
 
+    @Autowired
     public CareerPlannerAgent(
             @Qualifier("careerPlannerChatClient") ChatClient careerPlannerChatClient,
             @Qualifier("careerPlanGenerationChatClient") ChatClient careerPlanGenerationChatClient,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            CareerReadTools careerReadTools) {
         this.careerPlannerChatClient = careerPlannerChatClient;
         this.careerPlanGenerationChatClient = careerPlanGenerationChatClient;
         this.objectMapper = objectMapper;
+        this.careerReadTools = careerReadTools;
+    }
+
+    /** 保留给不验证 Tool Calling 的轻量单元测试使用。 */
+    public CareerPlannerAgent(
+            ChatClient careerPlannerChatClient,
+            ChatClient careerPlanGenerationChatClient,
+            ObjectMapper objectMapper) {
+        this(careerPlannerChatClient, careerPlanGenerationChatClient, objectMapper, null);
     }
 
     @Value("${spring.ai.openai.chat.model:unknown}")
@@ -77,26 +93,54 @@ public class CareerPlannerAgent {
      */
     public GroundedCareerAnswer chatGrounded(Long userId, String conversationId, String message,
                                             CareerChatBusinessContext businessContext, String knowledgeContext) {
+        return callGrounded(userId, conversationId, message, businessContext, knowledgeContext, null);
+    }
+
+    /**
+     * 允许模型按需调用本轮注册的只读职业数据工具。认证 userId 通过 ToolContext 传递，
+     * 不作为模型可填写的函数参数，工具执行证据则写入本轮 trace 供 Service 二次核对。
+     */
+    public GroundedCareerAnswer chatGroundedWithTools(
+            Long userId, String conversationId, String message,
+            CareerChatBusinessContext businessContext, String knowledgeContext,
+            CareerToolExecutionTrace trace) {
+        if (careerReadTools == null) {
+            throw new IllegalStateException("CareerReadTools 未配置");
+        }
+        return callGrounded(userId, conversationId, message, businessContext, knowledgeContext, trace);
+    }
+
+    private GroundedCareerAnswer callGrounded(
+            Long userId, String conversationId, String message,
+            CareerChatBusinessContext businessContext, String knowledgeContext,
+            CareerToolExecutionTrace trace) {
         long startTime = System.currentTimeMillis();
         try {
-            GroundedCareerAnswer answer = careerPlannerChatClient.prompt()
+            ChatClient.ChatClientRequestSpec request = careerPlannerChatClient.prompt()
                     .system(system -> system.param("careerContext", serializeChatContext(businessContext))
                             .param("knowledgeContext", knowledgeContext))
                     .user(message + "\n\n请仅返回结构化回答：excerpts 最多 6 条，每条 sourceIndex 是本轮知识片段的编号，"
                             + "quote 必须是该片段中连续、逐字相同的 12 至 180 字原文，不能改写或拼接。"
                             + "问题包含多个方面时，excerpts 应优先分别覆盖不同方面，避免用近义摘录重复占位；"
                             + "片段没有覆盖的方面不要补充事实。"
+                            + "toolExcerpts 最多 12 条；只有在本轮实际调用工具并取得 evidence 时才能填写，"
+                            + "evidenceId 和 quote 必须逐字复制工具结果，不能改写、拼接或自行编造。"
                             + "optionalActions 最多 3 条，必须以‘可以’或‘建议’开头，只写未来可尝试并验证的行动；"
-                            + "不能写用户已完成的结果、测量数字或未经证实的成效。不要输出其他字段。")
-                    .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
-                    .call()
-                    .entity(GroundedCareerAnswer.class);
-            log.info("Agent结构化RAG调用完成 agent=CareerPlannerAgent conversationId={} userId={} model={} durationMs={}",
-                    conversationId, userId, model, System.currentTimeMillis() - startTime);
+                            + "不能写用户已完成的结果、测量数字或未经证实的成效。没有对应证据的数组应返回空数组，"
+                            + "不要输出其他字段。")
+                    .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId));
+            if (trace != null) {
+                request = request.tools(careerReadTools).toolContext(Map.of(
+                        CareerReadTools.USER_ID_CONTEXT_KEY, userId,
+                        CareerReadTools.TRACE_CONTEXT_KEY, trace));
+            }
+            GroundedCareerAnswer answer = request.call().entity(GroundedCareerAnswer.class);
+            log.info("Agent结构化咨询调用完成 agent=CareerPlannerAgent conversationId={} userId={} model={} toolCalling={} durationMs={}",
+                    conversationId, userId, model, trace != null, System.currentTimeMillis() - startTime);
             return answer;
         } catch (Exception exception) {
-            log.warn("Agent结构化RAG调用失败 agent=CareerPlannerAgent conversationId={} userId={} model={} reason={}",
-                    conversationId, userId, model, exception.getClass().getSimpleName());
+            log.warn("Agent结构化咨询调用失败 agent=CareerPlannerAgent conversationId={} userId={} model={} toolCalling={} reason={}",
+                    conversationId, userId, model, trace != null, exception.getClass().getSimpleName());
             throw new AiServiceException("生成结构化职业咨询回答失败", exception);
         }
     }
