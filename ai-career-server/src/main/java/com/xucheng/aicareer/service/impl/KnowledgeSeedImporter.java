@@ -3,7 +3,9 @@ package com.xucheng.aicareer.service.impl;
 import com.xucheng.aicareer.service.model.KnowledgeChunk;
 import com.xucheng.aicareer.service.model.KnowledgeSeedDocument;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -30,18 +31,19 @@ public class KnowledgeSeedImporter implements ApplicationRunner {
 
     private final PgKnowledgeRepository repository;
     private final MarkdownKnowledgeChunker chunker;
-    private final KnowledgeEmbeddingClient embeddingClient;
+    private final EmbeddingModel embeddingModel;
     private final ObjectMapper objectMapper;
     private final Path directory;
     private final String model;
 
     public KnowledgeSeedImporter(PgKnowledgeRepository repository, MarkdownKnowledgeChunker chunker,
-                                 KnowledgeEmbeddingClient embeddingClient, ObjectMapper objectMapper,
+                                 @Qualifier("ragEmbeddingModel") EmbeddingModel embeddingModel,
+                                 ObjectMapper objectMapper,
                                  @Value("${ai.rag.knowledge-directory}") String directory,
                                  @Value("${ai.rag.embedding-model:text-embedding-v4}") String model) {
         this.repository = repository;
         this.chunker = chunker;
-        this.embeddingClient = embeddingClient;
+        this.embeddingModel = embeddingModel;
         this.objectMapper = objectMapper;
         this.directory = Path.of(directory).toAbsolutePath().normalize();
         this.model = model;
@@ -67,10 +69,9 @@ public class KnowledgeSeedImporter implements ApplicationRunner {
             if (chunks.isEmpty()) {
                 throw new IllegalArgumentException("知识文档没有有效内容: " + document.id());
             }
-            List<float[]> vectors = new ArrayList<>(chunks.size());
-            for (KnowledgeChunk chunk : chunks) {
-                vectors.add(embeddingClient.embed(document.title() + "\n" + chunk.section() + "\n" + chunk.content()));
-            }
+            List<float[]> vectors = embeddingModel.embed(chunks.stream()
+                    .map(chunk -> document.title() + "\n" + chunk.section() + "\n" + chunk.content())
+                    .toList());
             repository.replaceDocument(document, chunks, vectors, model);
             totalChunks += chunks.size();
             log.info("知识导入完成 documentId={} version={} chunks={}",

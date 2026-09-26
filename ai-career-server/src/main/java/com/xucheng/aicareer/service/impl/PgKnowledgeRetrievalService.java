@@ -5,7 +5,9 @@ import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import com.xucheng.aicareer.service.model.KnowledgeReference;
 import com.xucheng.aicareer.service.model.KnowledgeRetrievalResult;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -42,27 +44,28 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
     private static final Pattern DECLARED_NAME = Pattern.compile(
             "(我叫|我的名字是|姓名[:：]?)\\s*[\\p{IsHan}·]{2,4}");
     private final PgKnowledgeRepository repository;
-    private final KnowledgeEmbeddingClient embeddingClient;
+    private final EmbeddingModel embeddingModel;
     private final String model;
     private final double minScore;
     private final KnowledgeQueryPlanner queryPlanner;
 
     @Autowired
-    public PgKnowledgeRetrievalService(PgKnowledgeRepository repository, KnowledgeEmbeddingClient embeddingClient,
+    public PgKnowledgeRetrievalService(PgKnowledgeRepository repository,
+                                       @Qualifier("ragEmbeddingModel") EmbeddingModel embeddingModel,
                                        @Value("${ai.rag.embedding-model:text-embedding-v4}") String model,
                                        @Value("${ai.rag.min-score:0.55}") double minScore,
                                        KnowledgeQueryPlanner queryPlanner) {
         this.repository = repository;
-        this.embeddingClient = embeddingClient;
+        this.embeddingModel = embeddingModel;
         this.model = model;
         this.minScore = minScore;
         this.queryPlanner = queryPlanner;
     }
 
     /** 测试和独立工具复用无外部依赖的本地查询规划器，避免构造完整 Spring 容器。 */
-    public PgKnowledgeRetrievalService(PgKnowledgeRepository repository, KnowledgeEmbeddingClient embeddingClient,
+    public PgKnowledgeRetrievalService(PgKnowledgeRepository repository, EmbeddingModel embeddingModel,
                                        String model, double minScore) {
-        this(repository, embeddingClient, model, minScore, new KnowledgeQueryPlanner());
+        this(repository, embeddingModel, model, minScore, new KnowledgeQueryPlanner());
     }
 
     @Override
@@ -82,17 +85,27 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
             }
             List<String> queries = queryPlanner.plan(query);
             List<String> plannedQueries = queries.stream().map(this::sanitizeQuery).toList();
+            long embeddingStart = System.nanoTime();
+            List<float[]> vectors;
+            try {
+                // 多意图查询一次批量向量化，减少外部 HTTP 往返；画像、简历正文和会话历史不进入向量请求。
+                vectors = embeddingModel.embed(plannedQueries);
+                if (vectors.size() != plannedQueries.size()) {
+                    throw new IllegalStateException("Embedding 响应数量与查询数量不一致");
+                }
+            } catch (RuntimeException exception) {
+                throw new QueryFailure("embedding", elapsedMillis(embeddingStart), 0, exception);
+            }
+            embeddingMillis = elapsedMillis(embeddingStart);
             List<List<PgKnowledgeRepository.KnowledgeHit>> resultSets = new ArrayList<>();
-            List<CompletableFuture<QuerySearchResult>> futures = createQueryFutures(plannedQueries, target);
+            List<CompletableFuture<QuerySearchResult>> futures = createSearchFutures(vectors, target);
             for (int index = 0; index < futures.size(); index++) {
                 try {
                     QuerySearchResult queryResult = futures.get(index).join();
-                    embeddingMillis += queryResult.embeddingMillis();
                     databaseMillis += queryResult.databaseMillis();
                     resultSets.add(queryResult.hits());
                 } catch (CompletionException exception) {
                     QueryFailure failure = queryFailure(exception);
-                    embeddingMillis += failure.embeddingMillis();
                     databaseMillis += failure.databaseMillis();
                     if (index == 0) {
                         throw failure;
@@ -144,40 +157,31 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
     }
 
     /**
-     * 多意图问题的补充查询彼此独立，使用虚拟线程并行执行以避免线性放大响应时间；
+     * 多意图问题批量完成 Embedding 后，PGVector 查询彼此独立，使用虚拟线程并行执行以避免线性放大响应时间；
      * 返回的 Future 顺序仍与规划顺序一致，因此后续轮询合并是确定性的。
      */
-    private List<CompletableFuture<QuerySearchResult>> createQueryFutures(List<String> queries, String target) {
-        if (queries.size() == 1) {
+    private List<CompletableFuture<QuerySearchResult>> createSearchFutures(List<float[]> vectors, String target) {
+        if (vectors.size() == 1) {
             try {
-                return List.of(CompletableFuture.completedFuture(executeQuery(queries.getFirst(), target)));
+                return List.of(CompletableFuture.completedFuture(search(vectors.getFirst(), target)));
             } catch (QueryFailure failure) {
                 return List.of(CompletableFuture.failedFuture(failure));
             }
         }
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            return queries.stream()
-                    .map(query -> CompletableFuture.supplyAsync(() -> executeQuery(query, target), executor))
+            return vectors.stream()
+                    .map(vector -> CompletableFuture.supplyAsync(() -> search(vector, target), executor))
                     .toList();
         }
     }
 
-    private QuerySearchResult executeQuery(String query, String target) {
-        // 仅发送本轮问题及本地生成的职业主题词；画像、简历正文和会话历史不进入向量请求。
-        long embeddingStart = System.nanoTime();
-        float[] vector;
-        try {
-            vector = embeddingClient.embed(query);
-        } catch (RuntimeException exception) {
-            throw new QueryFailure("embedding", elapsedMillis(embeddingStart), 0, exception);
-        }
-        long embeddingMillis = elapsedMillis(embeddingStart);
+    private QuerySearchResult search(float[] vector, String target) {
         long databaseStart = System.nanoTime();
         try {
             List<PgKnowledgeRepository.KnowledgeHit> hits = repository.search(vector, target, model, 12);
-            return new QuerySearchResult(hits, embeddingMillis, elapsedMillis(databaseStart));
+            return new QuerySearchResult(hits, elapsedMillis(databaseStart));
         } catch (RuntimeException exception) {
-            throw new QueryFailure("database", embeddingMillis, elapsedMillis(databaseStart), exception);
+            throw new QueryFailure("database", 0, elapsedMillis(databaseStart), exception);
         }
     }
 
@@ -233,9 +237,7 @@ public class PgKnowledgeRetrievalService implements KnowledgeRetrievalService {
         }
     }
 
-    private record QuerySearchResult(List<PgKnowledgeRepository.KnowledgeHit> hits,
-                                     long embeddingMillis,
-                                     long databaseMillis) {
+    private record QuerySearchResult(List<PgKnowledgeRepository.KnowledgeHit> hits, long databaseMillis) {
     }
 
     private static final class QueryFailure extends RuntimeException {

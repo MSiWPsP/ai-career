@@ -38,6 +38,8 @@ ai:
     embedding-api-key: ${RAG_EMBEDDING_API_KEY:${AI_API_KEY:not-configured}}
     embedding-model: ${RAG_EMBEDDING_MODEL:text-embedding-v4}
     embedding-dimension: 1024
+    embedding-timeout-seconds: ${RAG_EMBEDDING_TIMEOUT_SECONDS:15}
+    embedding-max-retries: ${RAG_EMBEDDING_MAX_RETRIES:0}
     min-score: ${RAG_MIN_SCORE:0.55}
     pg-connect-timeout-seconds: ${RAG_PG_CONNECT_TIMEOUT_SECONDS:3}
     pg-socket-timeout-seconds: ${RAG_PG_SOCKET_TIMEOUT_SECONDS:5}

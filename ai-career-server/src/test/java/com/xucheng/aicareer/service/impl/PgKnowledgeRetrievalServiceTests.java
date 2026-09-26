@@ -2,12 +2,13 @@ package com.xucheng.aicareer.service.impl;
 
 import com.xucheng.aicareer.service.model.CareerChatBusinessContext;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
@@ -18,7 +19,7 @@ import static org.mockito.Mockito.when;
 class PgKnowledgeRetrievalServiceTests {
 
     private final PgKnowledgeRepository repository = mock(PgKnowledgeRepository.class);
-    private final KnowledgeEmbeddingClient embeddingClient = mock(KnowledgeEmbeddingClient.class);
+    private final EmbeddingModel embeddingClient = mock(EmbeddingModel.class);
     private final PgKnowledgeRetrievalService service = new PgKnowledgeRetrievalService(
             repository, embeddingClient, "text-embedding-v4", 0.55);
     private final CareerChatBusinessContext context = new CareerChatBusinessContext(null, List.of(), null);
@@ -27,7 +28,7 @@ class PgKnowledgeRetrievalServiceTests {
     void skipsGreetingsAndLocalOnlyRequests() {
         assertThat(service.retrieve("你好", context).hasKnowledge()).isFalse();
         assertThat(service.retrieve("我还有多少未完成任务？", context).hasKnowledge()).isFalse();
-        verify(embeddingClient, never()).embed(anyString());
+        verify(embeddingClient, never()).embed(anyList());
     }
 
     @Test
@@ -39,14 +40,14 @@ class PgKnowledgeRetrievalServiceTests {
 
     @Test
     void embeddingFailureFallsBackWithoutBreakingChat() {
-        when(embeddingClient.embed(anyString())).thenThrow(new IllegalStateException("provider failed"));
+        when(embeddingClient.embed(anyList())).thenThrow(new IllegalStateException("provider failed"));
 
         assertThat(service.retrieve("Java 后端需要什么技能？", context).hasKnowledge()).isFalse();
     }
 
     @Test
     void databaseFailureFallsBackWithoutInventingReferences() {
-        when(embeddingClient.embed(anyString())).thenReturn(new float[1024]);
+        when(embeddingClient.embed(anyList())).thenReturn(List.of(new float[1024]));
         when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
                 .thenThrow(new IllegalStateException("database unavailable"));
 
@@ -63,7 +64,7 @@ class PgKnowledgeRetrievalServiceTests {
 
     @Test
     void selectedSourceSnapshotCarriesExactChunkProvenance() {
-        when(embeddingClient.embed(anyString())).thenReturn(new float[1024]);
+        when(embeddingClient.embed(anyList())).thenReturn(List.of(new float[1024]));
         when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
                 .thenReturn(List.of(new PgKnowledgeRepository.KnowledgeHit("project-evidence",
                         "项目实践", "保留工程证据", "知识库", "没有测量记录就不写性能结果。", 0.91, 2, 3)));
@@ -83,14 +84,14 @@ class PgKnowledgeRetrievalServiceTests {
         KnowledgeQueryPlanner planner = mock(KnowledgeQueryPlanner.class);
         when(planner.plan("简历、投递和面试怎么安排？")).thenReturn(List.of(
                 "简历、投递和面试怎么安排？", "实习简历 可验证材料", "实习投递 复盘", "实习面试 真实案例"));
-        when(embeddingClient.embed(anyString())).thenAnswer(invocation -> {
-            String query = invocation.getArgument(0);
-            float[] vector = new float[1024];
-            vector[0] = query.contains("简历") && query.contains("可验证") ? 1
-                    : query.contains("投递") && query.contains("复盘") ? 2
-                    : query.contains("面试") && query.contains("真实案例") ? 3 : 0;
-            return vector;
-        });
+        when(embeddingClient.embed(anyList())).thenAnswer(invocation -> ((List<String>) invocation.getArgument(0))
+                .stream().map(query -> {
+                    float[] vector = new float[1024];
+                    vector[0] = query.contains("简历") && query.contains("可验证") ? 1
+                            : query.contains("投递") && query.contains("复盘") ? 2
+                            : query.contains("面试") && query.contains("真实案例") ? 3 : 0;
+                    return vector;
+                }).toList());
         when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
                 .thenAnswer(invocation -> {
                     int queryIndex = Math.round(((float[]) invocation.getArgument(0))[0]);
@@ -111,24 +112,23 @@ class PgKnowledgeRetrievalServiceTests {
     }
 
     @Test
-    void supplementalQueryFailureKeepsOriginalAndOtherSupplementalResults() {
+    void supplementalDatabaseFailureKeepsOriginalAndOtherSupplementalResults() {
         KnowledgeQueryPlanner planner = mock(KnowledgeQueryPlanner.class);
         when(planner.plan("简历、投递和面试怎么安排？")).thenReturn(List.of(
                 "简历、投递和面试怎么安排？", "实习简历 可验证材料", "实习投递 复盘", "实习面试 真实案例"));
-        when(embeddingClient.embed(anyString())).thenAnswer(invocation -> {
-            String query = invocation.getArgument(0);
-            if (query.contains("可验证材料")) {
-                throw new IllegalStateException("supplement unavailable");
-            }
-            float[] vector = new float[1024];
-            vector[0] = query.contains("投递") && query.contains("复盘") ? 2
-                    : query.contains("面试") && query.contains("真实案例") ? 3 : 0;
-            return vector;
-        });
+        when(embeddingClient.embed(anyList())).thenAnswer(invocation -> ((List<String>) invocation.getArgument(0))
+                .stream().map(query -> {
+                    float[] vector = new float[1024];
+                    vector[0] = query.contains("简历") && query.contains("可验证") ? 1
+                            : query.contains("投递") && query.contains("复盘") ? 2
+                            : query.contains("面试") && query.contains("真实案例") ? 3 : 0;
+                    return vector;
+                }).toList());
         when(repository.search(any(float[].class), nullable(String.class), eq("text-embedding-v4"), eq(12)))
                 .thenAnswer(invocation -> {
                     int queryIndex = Math.round(((float[]) invocation.getArgument(0))[0]);
                     return switch (queryIndex) {
+                        case 1 -> throw new IllegalStateException("supplement unavailable");
                         case 2 -> List.of(hit("建立投递与复盘节奏", 2, 0.89));
                         case 3 -> List.of(hit("面试准备", 3, 0.88));
                         default -> List.of(hit("先明确目标与约束", 0, 0.91));

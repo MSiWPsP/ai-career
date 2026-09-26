@@ -1,7 +1,7 @@
 package com.xucheng.aicareer.service.impl;
 
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.ai.embedding.EmbeddingModel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -12,8 +12,8 @@ class RagUnavailableInfrastructureTests {
 
     @Test
     void unavailableEmbeddingEndpointReturnsNoReferences() {
-        KnowledgeEmbeddingClient unavailable = new KnowledgeEmbeddingClient(new ObjectMapper(),
-                "http://127.0.0.1:1/v1", "test-only-key", "test-model", 2);
+        EmbeddingModel unavailable = new CompatibleOpenAiEmbeddingModel(
+                "http://127.0.0.1:1/v1", "test-only-key", "test-model", 2, 1, 0);
         PgKnowledgeRetrievalService retrieval = new PgKnowledgeRetrievalService(
                 mock(PgKnowledgeRepository.class), unavailable, "test-model", 0.55);
 
@@ -27,8 +27,11 @@ class RagUnavailableInfrastructureTests {
     void unavailablePostgresEndpointReturnsNoReferences() {
         PgKnowledgeRepository unavailable = new PgKnowledgeRepository(
                 "jdbc:postgresql://127.0.0.1:1/unavailable", "test", "test", 2, 1, 1, 1);
-        KnowledgeEmbeddingClient embedding = mock(KnowledgeEmbeddingClient.class);
-        when(embedding.embed(org.mockito.ArgumentMatchers.anyString())).thenReturn(new float[]{0.1f, 0.2f});
+        EmbeddingModel embedding = mock(EmbeddingModel.class);
+        when(embedding.embed(org.mockito.ArgumentMatchers.anyList())).thenAnswer(invocation ->
+                ((java.util.List<?>) invocation.getArgument(0)).stream()
+                        .map(ignored -> new float[]{0.1f, 0.2f})
+                        .toList());
         PgKnowledgeRetrievalService retrieval = new PgKnowledgeRetrievalService(
                 unavailable, embedding, "test-model", 0.55);
 

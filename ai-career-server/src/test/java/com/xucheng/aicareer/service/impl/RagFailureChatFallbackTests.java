@@ -10,13 +10,14 @@ import com.xucheng.aicareer.service.model.CareerChatTurnContext;
 import com.xucheng.aicareer.vo.CareerChatStreamVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.embedding.EmbeddingModel;
 import reactor.core.publisher.Flux;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -34,8 +35,8 @@ class RagFailureChatFallbackTests {
 
     @Test
     void unavailableEmbeddingStillCompletesStreamWithoutReferences() {
-        KnowledgeEmbeddingClient unavailable = new KnowledgeEmbeddingClient(new ObjectMapper(),
-                "http://127.0.0.1:1/v1", "test-only-key", "test-model", 2);
+        EmbeddingModel unavailable = new CompatibleOpenAiEmbeddingModel(
+                "http://127.0.0.1:1/v1", "test-only-key", "test-model", 2, 1, 0);
         PgKnowledgeRetrievalService retrieval = new PgKnowledgeRetrievalService(
                 mock(PgKnowledgeRepository.class), unavailable, "test-model", 0.55);
         Fixture fixture = fixture(retrieval);
@@ -53,8 +54,8 @@ class RagFailureChatFallbackTests {
     void unavailablePostgresStillCompletesStreamWithoutReferences() {
         PgKnowledgeRepository unavailable = new PgKnowledgeRepository(
                 "jdbc:postgresql://127.0.0.1:1/unavailable", "test", "test", 2, 1, 1, 1);
-        KnowledgeEmbeddingClient embedding = mock(KnowledgeEmbeddingClient.class);
-        when(embedding.embed(anyString())).thenReturn(new float[]{0.1f, 0.2f});
+        EmbeddingModel embedding = mock(EmbeddingModel.class);
+        stubEmbedding(embedding);
         PgKnowledgeRetrievalService retrieval = new PgKnowledgeRetrievalService(
                 unavailable, embedding, "test-model", 0.55);
         Fixture fixture = fixture(retrieval);
@@ -71,8 +72,8 @@ class RagFailureChatFallbackTests {
         PgKnowledgeRepository timedOut = mock(PgKnowledgeRepository.class);
         when(timedOut.search(any(), any(), anyString(), org.mockito.ArgumentMatchers.anyInt()))
                 .thenThrow(new IllegalStateException("query timeout"));
-        KnowledgeEmbeddingClient embedding = mock(KnowledgeEmbeddingClient.class);
-        when(embedding.embed(anyString())).thenReturn(new float[]{0.1f, 0.2f});
+        EmbeddingModel embedding = mock(EmbeddingModel.class);
+        stubEmbedding(embedding);
         PgKnowledgeRetrievalService retrieval = new PgKnowledgeRetrievalService(
                 timedOut, embedding, "test-model", 0.55);
         Fixture fixture = fixture(retrieval);
@@ -97,6 +98,13 @@ class RagFailureChatFallbackTests {
         CareerChatService service = new CareerChatServiceImpl(
                 agent, conversationService, contextService, retrieval, chatMemory, 20);
         return new Fixture(agent, conversationService, service, turn);
+    }
+
+    private void stubEmbedding(EmbeddingModel embedding) {
+        when(embedding.embed(anyList())).thenAnswer(invocation ->
+                ((List<?>) invocation.getArgument(0)).stream()
+                        .map(ignored -> new float[]{0.1f, 0.2f})
+                        .toList());
     }
 
     private CareerChatDTO request() {
