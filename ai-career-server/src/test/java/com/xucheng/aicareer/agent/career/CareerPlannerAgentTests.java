@@ -14,6 +14,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Flux;
 import tools.jackson.databind.ObjectMapper;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -177,11 +179,8 @@ class CareerPlannerAgentTests {
 
     @Test
     void generatePlanReturnsStructuredResultAndIncludesBusinessContext() {
-        AtomicReference<Prompt> capturedPrompt = new AtomicReference<>();
-        ChatClient generationClient = chatClient(prompt -> {
-            capturedPrompt.set(prompt);
-            return response(validPlanJson());
-        });
+        RecordingChatModel generationModel = new RecordingChatModel(validPlanJson());
+        ChatClient generationClient = chatClient(generationModel);
         CareerPlannerAgent agent = createAgent(chatClient(prompt -> response("unused")), generationClient);
 
         CareerPlanResult result = agent.generatePlan(
@@ -198,8 +197,12 @@ class CareerPlannerAgentTests {
 
         assertThat(result.getTargetPosition()).isEqualTo("Java后端开发工程师");
         assertThat(result.getRoadmap()).hasSize(3);
-        assertThat(messageTexts(capturedPrompt.get()))
+        Prompt capturedPrompt = generationModel.prompts.getFirst();
+        assertThat(messageTexts(capturedPrompt))
                 .anyMatch(text -> text.contains("软件工程") && text.contains("Java后端开发工程师"));
+        assertThat(capturedPrompt.getOptions())
+                .isInstanceOfSatisfying(OpenAiChatOptions.class, options ->
+                        assertThat(options.getExtraBody()).containsEntry("enable_thinking", false));
     }
 
     @Test
@@ -232,6 +235,25 @@ class CareerPlannerAgentTests {
                 .isInstanceOf(AiServiceException.class)
                 .hasMessage("生成结构化职业规划失败");
         assertThat(model.prompts).hasSize(2);
+    }
+
+    @Test
+    void generatePlanDoesNotRetryProviderFailure() {
+        AtomicInteger calls = new AtomicInteger();
+        ChatClient failingGenerationClient = chatClient(prompt -> {
+            calls.incrementAndGet();
+            throw new IllegalStateException("provider timeout");
+        });
+        CareerPlannerAgent agent = createAgent(
+                chatClient(prompt -> response("unused")), failingGenerationClient);
+
+        assertThatThrownBy(() -> agent.generatePlan(
+                10001L,
+                com.xucheng.aicareer.vo.UserProfileVO.builder().targetPosition("Java后端开发工程师").build(),
+                List.of(com.xucheng.aicareer.vo.UserSkillVO.builder().skillName("Java").build())))
+                .isInstanceOf(AiServiceException.class)
+                .hasMessage("调用职业规划模型失败");
+        assertThat(calls).hasValue(1);
     }
 
     private ChatClient chatClient(ChatModel chatModel) {
@@ -316,6 +338,11 @@ class CareerPlannerAgentTests {
         public ChatResponse call(Prompt prompt) {
             prompts.add(prompt);
             return new ChatResponse(List.of(new Generation(new AssistantMessage(responses.removeFirst()))));
+        }
+
+        @Override
+        public OpenAiChatOptions getOptions() {
+            return OpenAiChatOptions.builder().build();
         }
     }
 

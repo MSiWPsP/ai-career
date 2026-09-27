@@ -16,6 +16,7 @@ import com.xucheng.aicareer.vo.InterviewReportVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +70,13 @@ public class CareerPlannerAgent {
 
     @Value("${spring.ai.openai.chat.model:unknown}")
     private String model;
+
+    /**
+     * 职业规划属于受结构约束的生成任务，不需要模型输出长思维链。
+     * 百炼混合思考模型默认开启思考，显式关闭可避免大量不可见推理 Token 拖慢同步接口。
+     */
+    @Value("${ai.career-plan.thinking-enabled:${AI_CAREER_PLAN_THINKING_ENABLED:false}}")
+    private boolean careerPlanThinkingEnabled;
 
     /**
      * 执行一次普通非流式职业咨询。
@@ -222,7 +230,8 @@ public class CareerPlannerAgent {
     /**
      * 根据完整职业画像和技能快照生成结构化职业规划。
      *
-     * <p>模型结果未通过本地结构校验时最多重试一次，避免偶发格式漂移直接导致请求失败。</p>
+     * <p>模型结果未通过本地结构校验时最多重试一次，避免偶发格式漂移直接导致请求失败。
+     * 网络、限流和超时异常由底层 SDK 按统一配置处理，本层不会再次发起整份规划生成。</p>
      */
     public CareerPlanResult generatePlan(
             Long userId, UserProfileVO profile, List<UserSkillVO> skills) {
@@ -248,31 +257,45 @@ public class CareerPlannerAgent {
 
     private CareerPlanResult callStructuredPlan(Long userId, String userPrompt) {
         long startTime = System.currentTimeMillis();
-        RuntimeException lastFailure = null;
+        IllegalArgumentException lastValidationFailure = null;
 
         for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+            String prompt = attempt == 1
+                    ? userPrompt
+                    : userPrompt + "\n上一次结果未通过结构校验。请严格按照输出结构重新生成，所有必填字段均不得为空。";
+            CareerPlanResult result;
             try {
-                String prompt = attempt == 1
-                        ? userPrompt
-                        : userPrompt + "\n上一次结果未通过结构校验。请严格按照输出结构重新生成，所有必填字段均不得为空。";
-                CareerPlanResult result = careerPlanGenerationChatClient.prompt()
+                result = careerPlanGenerationChatClient.prompt()
                         .user(prompt)
+                        .options(OpenAiChatOptions.builder()
+                                .extraBody(Map.of("enable_thinking", careerPlanThinkingEnabled)))
                         .call()
                         .entity(CareerPlanResult.class);
+            } catch (Exception exception) {
+                // SDK 已按 AI_MAX_RETRIES 处理瞬时故障；此处再次循环会把 60 秒超时放大到数分钟。
+                log.warn("Agent结构化模型调用失败 agent=CareerPlannerAgent userId={} model={} attempt={} "
+                                + "durationMs={} retry=false reason={}",
+                        userId, model, attempt, System.currentTimeMillis() - startTime,
+                        exception.getClass().getSimpleName());
+                throw new AiServiceException("调用职业规划模型失败", exception);
+            }
+
+            try {
                 validateGeneratedPlan(result);
                 log.info("Agent结构化调用成功 agent=CareerPlannerAgent userId={} model={} attempt={} durationMs={}",
                         userId, model, attempt, System.currentTimeMillis() - startTime);
                 return result;
-            } catch (Exception exception) {
-                lastFailure = exception instanceof RuntimeException runtimeException
-                        ? runtimeException : new RuntimeException(exception);
-                log.warn("Agent结构化调用失败 agent=CareerPlannerAgent userId={} model={} attempt={} durationMs={} reason={}",
+            } catch (IllegalArgumentException exception) {
+                lastValidationFailure = exception;
+                boolean willRetry = attempt < MAX_GENERATION_ATTEMPTS;
+                log.warn("Agent结构校验失败 agent=CareerPlannerAgent userId={} model={} attempt={} durationMs={} "
+                                + "retry={} reason={}",
                         userId, model, attempt, System.currentTimeMillis() - startTime,
-                        exception.getClass().getSimpleName());
+                        willRetry, exception.getMessage());
             }
         }
 
-        throw new AiServiceException("生成结构化职业规划失败", lastFailure);
+        throw new AiServiceException("生成结构化职业规划失败", lastValidationFailure);
     }
 
     private String buildGenerationPrompt(UserProfileVO profile, List<UserSkillVO> skills) {
