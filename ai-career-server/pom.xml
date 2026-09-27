@@ -60,6 +60,10 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
             <version>3.5.17</version>
@@ -151,6 +155,16 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <!-- 本地覆盖配置即使存在于 resources 中也绝不能进入生产 JAR。 -->
+                    <exclude>application-local.yml</exclude>
+                    <exclude>**/application-local.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -188,6 +202,33 @@
                                     <artifactId>lombok</artifactId>
                                 </path>
                             </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>reject-local-config-in-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <condition property="application.local.packaged">
+                                    <resourcecount when="greater" count="0">
+                                        <zipfileset src="${project.build.directory}/${project.build.finalName}.jar">
+                                            <include name="**/application-local.yml"/>
+                                        </zipfileset>
+                                    </resourcecount>
+                                </condition>
+                                <fail if="application.local.packaged"
+                                      message="安全检查失败：application-local.yml 被打入 JAR"/>
+                            </target>
                         </configuration>
                     </execution>
                 </executions>
