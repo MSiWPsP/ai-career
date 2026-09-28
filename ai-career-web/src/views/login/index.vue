@@ -64,8 +64,11 @@ async function switchMode() {
     <section class="login-hero">
       <div class="hero-content">
         <div class="login-brand">
-          <img class="login-logo-full" src="/ai-career-logo.png" alt="AI职途——用 AI 点亮你的职业未来" />
-          <img class="login-logo-mark" src="/ai-career-mark.png" alt="AI职途" />
+          <img src="/ai-career-mark.png" alt="智职星" />
+          <span class="login-brand-copy">
+            <strong>智职星</strong>
+            <small>智能职业成长平台</small>
+          </span>
         </div>
         <h1>让每一步成长，<br />都更接近理想职业。</h1>
         <p class="hero-desc">
@@ -83,7 +86,7 @@ async function switchMode() {
     <section class="login-panel">
       <div class="form-wrap">
         <p class="eyebrow">{{ isRegister ? '新用户注册' : '账号登录' }}</p>
-        <h2>{{ isRegister ? '创建你的成长档案' : '欢迎回到 AI职途' }}</h2>
+        <h2>{{ isRegister ? '创建你的成长档案' : '欢迎回到智职星' }}</h2>
         <p class="form-subtitle">
           {{ isRegister ? '注册后，从一份职业画像开始你的成长旅程。' : '登录后继续查看你的职业路线与成长任务。' }}
         </p>
@@ -127,7 +130,7 @@ async function switchMode() {
           <button @click="switchMode">{{ isRegister ? '直接登录' : '免费注册' }}</button>
         </p>
       </div>
-      <p class="copyright">AI职途 · 让职业成长有迹可循</p>
+      <p class="copyright">智职星 · 让职业成长有迹可循</p>
     </section>
   </main>
 </template>
@@ -169,27 +172,40 @@ async function switchMode() {
 }
 
 .login-brand {
-  position: relative;
-  width: 200px;
-  height: 205px;
-  overflow: hidden;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 14px;
   margin-bottom: 40px;
+  padding: 12px 18px 12px 12px;
   border-radius: 8px;
   background: #fff;
+  box-shadow: 0 12px 30px rgb(5 31 75 / 16%);
 }
 
 .login-brand img {
-  position: absolute;
-  top: -53px;
-  left: -45px;
   display: block;
-  width: 290px;
-  height: 290px;
-  max-width: none;
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
 }
 
-.login-brand .login-logo-mark {
-  display: none;
+.login-brand-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.login-brand-copy strong {
+  color: #0d3777;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: 4px;
+}
+
+.login-brand-copy small {
+  color: #557095;
+  font-size: 11px;
+  letter-spacing: 2px;
 }
 
 .hero-content h1 {
@@ -333,18 +349,7 @@ async function switchMode() {
     background-size: cover;
   }
 
-  .login-brand {
-    width: 166px;
-    height: 178px;
-    margin-bottom: 22px;
-  }
-
-  .login-brand img {
-    top: -44px;
-    left: -37px;
-    width: 240px;
-    height: 240px;
-  }
+  .login-brand { margin-bottom: 22px; }
 
   .login-panel {
     min-height: 590px;
@@ -379,21 +384,18 @@ async function switchMode() {
     width: 74px;
     height: 70px;
     grid-row: span 2;
+    gap: 0;
     margin: 0;
     padding: 5px;
   }
 
-  .login-brand .login-logo-full {
-    display: none;
-  }
-
-  .login-brand .login-logo-mark {
-    position: static;
-    display: block;
+  .login-brand img {
     width: 100%;
     height: 100%;
     object-fit: contain;
   }
+
+  .login-brand-copy { display: none; }
 
   .hero-content h1 {
     font-size: 22px;

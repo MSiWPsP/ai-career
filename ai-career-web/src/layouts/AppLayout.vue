@@ -156,7 +156,7 @@ function logout() {
       <button class="brand" type="button" aria-label="返回首页" @click="navigate('/dashboard')">
         <span class="brand-mark"><img src="/ai-career-mark.png" alt="" /></span>
         <span>
-          <strong>AI职途</strong>
+          <strong>智职星</strong>
           <small>智能职业成长平台</small>
         </span>
       </button>
@@ -210,7 +210,7 @@ function logout() {
           <el-icon><Operation /></el-icon>
         </button>
         <div>
-          <span class="breadcrumb">AI职途 /</span>
+          <span class="breadcrumb">智职星 /</span>
           <strong>{{ pageTitle }}</strong>
         </div>
         <div class="topbar-actions">

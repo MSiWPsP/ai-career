@@ -1,6 +1,6 @@
-# AI职途前端
+# 智职星前端
 
-“AI职途——大学生智能职业成长平台”的 Vue 3 前端。项目使用 TypeScript、Vite、Element Plus、Pinia、Axios 和 ECharts，并与仓库中的 Spring Boot 服务共同完成“职业画像 → 职业规划 → 成长任务 → 模拟面试 → 能力诊断 → 动态重新规划”的业务闭环。
+“智职星——大学生智能职业成长平台”的 Vue 3 前端。项目使用 TypeScript、Vite、Element Plus、Pinia、Axios 和 ECharts，并与仓库中的 Spring Boot 服务共同完成“职业画像 → 职业规划 → 成长任务 → 模拟面试 → 能力诊断 → 动态重新规划”的业务闭环。
 
 ## 已实现功能
 

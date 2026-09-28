@@ -84,7 +84,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  document.title = `${String(to.meta.title || 'AI职途')} · AI职途`
+  document.title = `${String(to.meta.title || '智职星')} · 智职星`
   if (to.meta.requiresAuth && !tokenStorage.get()) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
