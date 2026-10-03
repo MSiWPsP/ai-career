@@ -1,7 +1,8 @@
 :root {
   font-family: "Segoe UI Variable Text", "Microsoft YaHei UI", "PingFang SC", sans-serif;
-  color: #10233f;
-  background: #f3f6fa;
+  color: #e7eefb;
+  background: #080f1f;
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --blue-50: #eff6ff;
@@ -11,33 +12,65 @@
   --blue-600: #1d4ed8;
   --blue-700: #1e40af;
   --blue-900: #17315c;
-  --primary: #1d4ed8;
-  --primary-dark: #17315c;
-  --primary-soft: #eff6ff;
-  --accent: #356ba8;
-  --success: #14765f;
-  --success-soft: #eaf6f2;
-  --warning: #9a5b13;
-  --warning-soft: #fff5e8;
-  --danger: #bb3e38;
-  --text: #10233f;
-  --muted: #52657a;
-  --tertiary: #7b8ba0;
-  --line: #d9e2ec;
-  --surface: #ffffff;
-  --surface-subtle: #f8fafc;
-  --page: #f3f6fa;
-  --shadow: 0 1px 2px rgba(16, 35, 63, 0.04), 0 8px 24px rgba(23, 49, 92, 0.035);
-  --shadow-raised: 0 14px 34px rgba(23, 49, 92, 0.09);
+  --primary: #63b3ff;
+  --primary-dark: #bbddff;
+  --primary-soft: #142b48;
+  --accent: #64d8ef;
+  --success: #6bdbb5;
+  --success-soft: #12362f;
+  --warning: #edbf79;
+  --warning-soft: #382c1b;
+  --danger: #f28d94;
+  --text: #e7eefb;
+  --muted: #a0b1ca;
+  --tertiary: #8b9bb6;
+  --line: #263852;
+  --surface: #111e32;
+  --surface-subtle: #15243b;
+  --page: #080f1f;
+  --shadow: 0 8px 28px rgb(0 0 0 / 14%);
+  --shadow-raised: 0 16px 40px rgb(0 0 0 / 28%);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --motion-fast: 160ms;
   --motion-normal: 240ms;
   --ease-standard: cubic-bezier(.2, .8, .2, 1);
-  --el-color-primary: #1d4ed8;
-  --el-color-primary-light-3: #5b80e2;
-  --el-color-primary-light-9: #eaf2ff;
+  --el-color-primary: #63b3ff;
+  --el-color-primary-light-3: #8dc8ff;
+  --el-color-primary-light-5: #315b86;
+  --el-color-primary-light-7: #223f60;
+  --el-color-primary-light-8: #1b3452;
+  --el-color-primary-light-9: #142b48;
+  --el-color-primary-dark-2: #4097ea;
+  --el-bg-color: #111e32;
+  --el-bg-color-page: #080f1f;
+  --el-bg-color-overlay: #15243b;
+  --el-fill-color: #1c2d45;
+  --el-fill-color-light: #192a42;
+  --el-fill-color-lighter: #15243b;
+  --el-fill-color-extra-light: #111e32;
+  --el-fill-color-dark: #263852;
+  --el-fill-color-blank: #111e32;
+  --el-text-color-primary: #e7eefb;
+  --el-text-color-regular: #c2cfe1;
+  --el-text-color-secondary: #a0b1ca;
+  --el-text-color-placeholder: #8b9bb6;
+  --el-text-color-disabled: #7889a2;
+  --el-border-color: #354964;
+  --el-border-color-light: #2b3d57;
+  --el-border-color-lighter: #263852;
+  --el-border-color-extra-light: #22324b;
+  --el-mask-color: rgb(8 15 31 / 88%);
+  --el-mask-color-extra-light: rgb(8 15 31 / 65%);
+  --el-color-success: #6bdbb5;
+  --el-color-success-light-9: #12362f;
+  --el-color-warning: #edbf79;
+  --el-color-warning-light-9: #382c1b;
+  --el-color-danger: #f28d94;
+  --el-color-danger-light-9: #3b232f;
+  --el-color-info: #a0b1ca;
+  --el-color-info-light-9: #1c2d45;
 }
 
 * {
@@ -120,7 +153,7 @@ a {
   padding: 2px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: #fff;
+  background: var(--surface);
   flex: none;
   box-shadow: 0 4px 12px rgb(29 78 216 / 8%);
   transition: transform var(--motion-normal) var(--ease-standard), box-shadow var(--motion-normal) var(--ease-standard);
@@ -224,7 +257,7 @@ a {
 
 .nav-item:hover {
   color: var(--primary-dark);
-  background: #f6f9fd;
+  background: var(--surface-subtle);
   transform: translateX(2px);
 }
 
@@ -319,7 +352,7 @@ a {
   min-width: 0;
   margin-left: 248px;
   background:
-    linear-gradient(rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 190px),
+    radial-gradient(ellipse at 80% 0%, rgb(38 104 178 / 14%), transparent 50%),
     var(--page);
 }
 
@@ -332,8 +365,8 @@ a {
   align-items: center;
   justify-content: space-between;
   padding: 0 30px;
-  border-bottom: 1px solid rgba(217, 226, 236, .9);
-  background: rgba(255, 255, 255, .92);
+  border-bottom: 1px solid var(--line);
+  background: rgb(10 20 37 / 92%);
   backdrop-filter: blur(14px);
 }
 
@@ -455,7 +488,7 @@ a {
   padding: 15px 18px;
   border: 0;
   border-bottom: 1px solid var(--line);
-  background: #f8fbff;
+  background: var(--surface-subtle);
   cursor: pointer;
   text-align: left;
 }
@@ -465,7 +498,7 @@ a {
 }
 
 .notification-list > button.read {
-  background: #fff;
+  background: var(--surface);
 }
 
 .notification-dot {
@@ -477,7 +510,7 @@ a {
 }
 
 .notification-list > button.read .notification-dot {
-  background: #c9d5e3;
+  background: var(--surface-subtle);
 }
 
 .notification-list strong,
@@ -548,28 +581,15 @@ a {
   overflow: hidden;
   margin-bottom: 26px;
   padding: 25px 28px;
-  border: 1px solid #2563eb;
+  border: 1px solid #315275;
   border-radius: var(--radius-lg);
   color: #fff;
-  background:
-    radial-gradient(circle at 78% 20%, rgb(103 232 249 / 24%) 0 2px, transparent 3px),
-    linear-gradient(120deg, #102f68 0%, #1d4ed8 58%, #2784e8 100%);
-  background-size: 35px 35px, auto;
+  background: radial-gradient(ellipse at 90% 0%, rgb(56 189 248 / 12%), transparent 65%), linear-gradient(120deg, #142841, #102038);
+  background-size: auto;
   box-shadow: 0 18px 40px rgb(29 78 216 / 16%);
 }
 
-.page-heading::after {
-  position: absolute;
-  top: -115px;
-  right: 10%;
-  width: 260px;
-  height: 260px;
-  border: 1px solid rgb(255 255 255 / 16%);
-  border-radius: 50%;
-  box-shadow: 0 0 0 38px rgb(255 255 255 / 5%), 0 0 0 82px rgb(255 255 255 / 3%);
-  content: '';
-  pointer-events: none;
-}
+.page-heading::after { display: none; }
 
 .page-heading > * {
   position: relative;
@@ -599,7 +619,7 @@ a {
 .page-heading .soft-label {
   border: 1px solid rgb(255 255 255 / 20%);
   color: #e0f2fe;
-  background: rgb(255 255 255 / 12%);
+  background: var(--surface);
   backdrop-filter: blur(6px);
 }
 
@@ -607,14 +627,14 @@ a {
 .page-heading > div > .el-button {
   border-color: rgb(255 255 255 / 72%);
   color: #fff;
-  background: rgb(255 255 255 / 10%);
+  background: var(--surface);
 }
 
 .page-heading > .el-button:hover,
 .page-heading > div > .el-button:hover {
   border-color: #fff;
-  color: #1746a2;
-  background: #fff;
+  color: var(--primary);
+  background: var(--surface);
 }
 
 .surface-card {
@@ -658,7 +678,7 @@ a {
   display: inline-flex;
   align-items: center;
   padding: 6px 10px;
-  border: 1px solid #d7e5f8;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   color: var(--primary-dark);
   background: var(--primary-soft);
@@ -681,7 +701,7 @@ a {
   height: 54px;
   margin: 0 auto 13px;
   place-items: center;
-  border: 1px solid #d7e5f8;
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
   color: var(--primary);
   background: var(--primary-soft);
@@ -704,13 +724,25 @@ a {
 }
 
 .el-button--primary {
-  --el-button-bg-color: var(--primary);
-  --el-button-border-color: var(--primary);
-  --el-button-hover-bg-color: #285fe4;
-  --el-button-hover-border-color: #285fe4;
-  --el-button-active-bg-color: var(--primary-dark);
-  --el-button-active-border-color: var(--primary-dark);
+  --el-button-text-color: #071426;
+  --el-button-bg-color: #63b3ff;
+  --el-button-border-color: #63b3ff;
+  --el-button-hover-text-color: #071426;
+  --el-button-hover-bg-color: #8dc8ff;
+  --el-button-hover-border-color: #8dc8ff;
+  --el-button-active-bg-color: #4097ea;
+  --el-button-active-border-color: #4097ea;
 }
+
+.el-button--primary.is-plain {
+  --el-button-text-color: var(--primary);
+  --el-button-bg-color: var(--primary-soft);
+  --el-button-border-color: #315b86;
+}
+
+.el-message { --el-message-bg-color: var(--surface-subtle); --el-message-border-color: var(--line); }
+.el-tag { --el-tag-border-color: var(--line); }
+.el-loading-spinner .el-loading-text { color: var(--primary); }
 
 .el-button {
   border-radius: var(--radius-sm);
@@ -735,8 +767,8 @@ a {
 }
 
 .el-table {
-  --el-table-header-bg-color: #f7f9fc;
-  --el-table-row-hover-bg-color: #f5f8fd;
+  --el-table-header-bg-color: var(--surface-subtle);
+  --el-table-row-hover-bg-color: var(--surface-subtle);
   --el-table-border-color: var(--line);
   --el-table-text-color: var(--muted);
   --el-table-header-text-color: var(--text);

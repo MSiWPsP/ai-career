@@ -31,9 +31,9 @@ const alternativeText = computed(() => props.role === 'planner' ? 'AI 职业规�
   height: var(--agent-avatar-size);
   flex: 0 0 var(--agent-avatar-size);
   overflow: hidden;
-  border: 1px solid #bfd2ee;
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: #eaf2ff;
+  background: var(--primary-soft);
   box-shadow: 0 3px 10px rgb(23 49 92 / 10%);
 }
 
