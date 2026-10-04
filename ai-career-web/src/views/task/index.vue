@@ -50,6 +50,7 @@ async function selectStatus(status?: number) {
 }
 
 async function changeTaskStatus(task: CareerTask, status: number) {
+  if (updatingTaskId.value) return
   updatingTaskId.value = task.id
   try {
     await updateTaskStatus(task.id, status)
@@ -112,6 +113,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
                 :key="task.id"
                 :task="task"
                 :updating="updatingTaskId === task.id"
+                :disabled="!!updatingTaskId"
                 @change-status="changeTaskStatus"
               />
             </div>

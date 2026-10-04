@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Cpu, MagicStick, Monitor } from '@element-plus/icons-vue'
+import { Cpu, MagicStick, Monitor, Search } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createProfile, getProfile, getProfileCompletion, updateProfile } from '../../api/profile'
 import { getSkills, replaceSkills } from '../../api/skill'
-import type { UserProfile } from '../../types/api'
+import type { UserProfile, UserSkill } from '../../types/api'
+import { isNotFound } from '../../utils/apiError'
+import { skillsChanged } from '../../utils/skillAssessment'
 
 interface SkillCatalogItem {
   name: string
@@ -68,6 +70,8 @@ const currentStep = ref(0)
 const loading = ref(true)
 const saving = ref(false)
 const profileExists = ref(false)
+const loadError = ref(false)
+const savedSkills = ref<UserSkill[]>([])
 const completion = ref(0)
 const skillLevels = reactive<Record<string, number>>({})
 const form = reactive<UserProfile>({
@@ -93,28 +97,36 @@ const interests = [
   { icon: Cpu, title: 'Java后端开发', desc: 'Web 服务、业务系统与中间件' },
   { icon: Monitor, title: 'Web前端开发', desc: 'Vue、React 与交互开发' },
   { icon: MagicStick, title: 'AI应用开发', desc: 'Agent、RAG 与大模型应用' },
+  { icon: Search, title: '软件测试', desc: '接口测试、质量保障与自动化' },
 ]
 
 const selectedSkillCount = computed(() => Object.values(skillLevels).filter((level) => level > 0).length)
 
-onMounted(async () => {
+onMounted(loadProfile)
+async function loadProfile() {
+  loading.value = true
+  loadError.value = false
   const [profileResult, skillsResult, completionResult] = await Promise.allSettled([
     getProfile({ silent: true }),
     getSkills(),
     getProfileCompletion({ silent: true }),
   ])
-  if (profileResult.status === 'fulfilled') {
+  if (profileResult.status === 'fulfilled' && profileResult.value) {
     Object.assign(form, profileResult.value)
     profileExists.value = true
   }
+  if (profileResult.status === 'rejected' && !isNotFound(profileResult.reason)) loadError.value = true
   if (skillsResult.status === 'fulfilled') {
+    savedSkills.value = skillsResult.value
+    Object.keys(skillLevels).forEach(name => { delete skillLevels[name] })
     skillsResult.value.forEach((skill) => {
       skillLevels[skill.skillName] = skill.level
     })
   }
+  else loadError.value = true
   if (completionResult.status === 'fulfilled') completion.value = completionResult.value.score
   loading.value = false
-})
+}
 
 function chooseInterest(title: string) {
   form.interestDescription = form.interestDescription === title ? '' : title
@@ -127,6 +139,7 @@ async function nextStep() {
 }
 
 async function save() {
+  if (saving.value || loading.value || loadError.value) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   saving.value = true
@@ -142,10 +155,17 @@ async function save() {
         const item = Object.values(skillCatalog).flat().find((skill) => skill.name === skillName)
         return { skillName, skillCategory: item?.category || 'OTHER', level }
       })
-    if (selectedSkills.length) await replaceSkills(selectedSkills)
+    // 空集合必须提交；未编辑技能时不覆盖面试来源和融合分数。
+    if (skillsChanged(savedSkills.value, selectedSkills)) await replaceSkills(selectedSkills)
+    savedSkills.value = await getSkills()
+    Object.keys(skillLevels).forEach(name => { delete skillLevels[name] })
+    savedSkills.value.forEach(skill => { skillLevels[skill.skillName] = skill.level })
+    Object.assign(form, await getProfile())
     const latestCompletion = await getProfileCompletion()
     completion.value = latestCompletion.score
     ElMessage.success('职业画像已保存')
+  } catch {
+    // 请求层提示具体失败原因；部分保存失败时不展示整体成功。
   } finally {
     saving.value = false
   }
@@ -165,6 +185,10 @@ async function save() {
         <div><span>画像完整度</span><strong>{{ completion >= 80 ? '信息较完整' : '继续完善中' }}</strong></div>
       </div>
     </header>
+
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon title="画像或技能加载失败，暂不可保存，避免覆盖已有数据。">
+      <el-button link type="danger" @click="loadProfile">重新加载</el-button>
+    </el-alert>
 
     <section class="surface-card profile-shell">
       <el-steps :active="currentStep" align-center finish-status="success">
@@ -201,7 +225,7 @@ async function save() {
         </section>
 
         <section v-show="currentStep === 1" class="step-panel">
-          <div class="step-intro"><span>02</span><div><h2>标记当前技能水平</h2><p>0 表示暂未学习，5 表示熟练掌握。已选择 {{ selectedSkillCount }} 项技能。</p></div></div>
+          <div class="step-intro"><span>02</span><div><h2>标记自评技能水平</h2><p>0 表示暂未学习，5 表示自评熟练掌握。已选择 {{ selectedSkillCount }} 项技能；自评不等于面试或项目验证。</p></div></div>
           <div class="skill-groups">
             <article v-for="(skills, category) in skillCatalog" :key="category" class="skill-group">
               <h3>{{ category }}</h3>
@@ -265,8 +289,8 @@ async function save() {
       <footer class="step-actions">
         <el-button :disabled="currentStep === 0" @click="currentStep--">上一步</el-button>
         <div>
-          <el-button v-if="currentStep === 3" :loading="saving" @click="save">仅保存画像</el-button>
-          <el-button type="primary" :loading="saving" @click="nextStep">
+          <el-button v-if="currentStep === 3" :loading="saving" :disabled="loadError || loading" @click="save">仅保存画像</el-button>
+          <el-button type="primary" :loading="saving" :disabled="loadError || loading" @click="nextStep">
             {{ currentStep === 3 ? '保存职业画像' : '下一步' }}
           </el-button>
         </div>

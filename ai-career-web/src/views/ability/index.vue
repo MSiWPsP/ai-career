@@ -2,12 +2,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { DataAnalysis, TrendCharts, Trophy } from '@element-plus/icons-vue'
 import { getAbilityHistory, getAbilityRadar, getAbilityTrend, getCurrentAbilities } from '../../api/ability'
+import { getSkills } from '../../api/skill'
+import { selfAssessmentRadar } from '../../utils/skillAssessment'
 import AbilityRadar from '../../components/AbilityRadar.vue'
 import AbilityTrendChart from '../../components/AbilityTrendChart.vue'
 import type { AbilityRadar as AbilityRadarData, AbilityScore, AbilityTrend } from '../../types/api'
 import { formatDate } from '../../utils/data'
 
 const loading = ref(true)
+const loadError = ref(false)
+const selfRadar = ref<AbilityRadarData>({ indicators: [], values: [] })
 const current = ref<Record<string, number>>({})
 const radar = ref<AbilityRadarData>({ indicators: [], values: [] })
 const trend = ref<AbilityTrend>({ records: [] })
@@ -29,24 +33,35 @@ const abilityChartTitle = computed(() => radar.value.indicators.length > 0 && ra
   ? '当前能力概览'
   : '当前能力雷达')
 
-onMounted(async () => {
-  const [currentData, radarData, historyData] = await Promise.all([
+onMounted(load)
+async function load() {
+  loading.value = true
+  loadError.value = false
+  try {
+  const [currentData, radarData, historyData, skillData] = await Promise.all([
     getCurrentAbilities(),
     getAbilityRadar(),
     getAbilityHistory({ page: 1, pageSize: 10 }),
+    getSkills(),
   ])
   current.value = currentData
   radar.value = radarData
   history.value = historyData.records
   historyTotal.value = historyData.total
+  selfRadar.value = selfAssessmentRadar(skillData)
   selectedAbility.value = Object.keys(currentData)[0] || ''
   trend.value = await getAbilityTrend(selectedAbility.value || undefined)
   if (!selectedAbility.value && trend.value.abilityName) selectedAbility.value = trend.value.abilityName
-  loading.value = false
-})
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+}
 
 async function switchTrend() {
-  trend.value = await getAbilityTrend(selectedAbility.value || undefined)
+  try { trend.value = await getAbilityTrend(selectedAbility.value || undefined) }
+  catch { loadError.value = true }
 }
 
 function sourceLabel(source: string) {
@@ -62,13 +77,21 @@ function sourceLabel(source: string) {
         <h1>能力画像</h1>
         <p>关注分数背后的变化，找到下一阶段最值得投入的方向。</p>
       </div>
-      <span class="soft-label">已记录 {{ historyTotal }} 次能力评估</span>
+      <span class="soft-label">已记录 {{ historyTotal }} 条能力评分</span>
     </header>
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon title="能力数据加载失败，请重试；当前展示可能不完整。">
+      <el-button link type="danger" @click="load">重新加载</el-button>
+    </el-alert>
+
+    <section v-if="selfRadar.indicators.length" class="surface-card chart-card self-assessment">
+      <div class="card-header"><div><h2>自评技能初始画像 · 待验证</h2><p>等级 × 20 换算为自评分，仅反映个人填写，不计入面试评估历史或能力达标。</p></div><el-button type="primary" @click="$router.push('/interview/setup')">通过面试检验</el-button></div>
+      <AbilityRadar :data="selfRadar" :height="300" name="自评技能 · 待验证" />
+    </section>
 
     <section class="ability-summary">
       <article><el-icon class="summary-icon"><DataAnalysis /></el-icon><div><p>能力维度</p><strong>{{ Object.keys(current).length }}<small>项</small></strong></div></article>
-      <article><el-icon class="summary-icon green"><TrendCharts /></el-icon><div><p>当前平均分</p><strong>{{ averageScore }}<small>分</small></strong></div></article>
-      <article><el-icon class="summary-icon orange"><Trophy /></el-icon><div><p>当前优势能力</p><strong class="ability-name">{{ strongest?.[0] || '待评估' }}</strong><small v-if="strongest">{{ strongest[1] }} 分</small></div></article>
+      <article><el-icon class="summary-icon green"><TrendCharts /></el-icon><div><p>当前平均评估分</p><strong>{{ Object.keys(current).length ? averageScore : '—' }}<small v-if="Object.keys(current).length">分</small></strong></div></article>
+      <article><el-icon class="summary-icon orange"><Trophy /></el-icon><div><p>当前最高评分维度</p><strong class="ability-name">{{ strongest?.[0] || '待评估' }}</strong><small v-if="strongest">{{ strongest[1] }} 分</small></div></article>
     </section>
 
     <section class="ability-grid">
@@ -89,7 +112,7 @@ function sourceLabel(source: string) {
 
     <section class="surface-card history-card">
       <div class="card-header">
-        <div><h2>能力评分记录</h2><p>能力评分来自自我评估、模拟面试和后续 Agent 分析</p></div>
+        <div><h2>能力评分记录</h2><p>当前主要来自 AI 模拟面试评估；自评技能单独展示，不冒充验证记录。</p></div>
       </div>
       <el-table v-if="history.length" :data="history" style="width: 100%">
         <el-table-column prop="abilityName" label="能力名称" min-width="150" />
@@ -106,13 +129,14 @@ function sourceLabel(source: string) {
         </el-table-column>
       </el-table>
       <div v-else class="empty-panel">
-        <div><el-icon class="empty-icon"><DataAnalysis /></el-icon><strong>暂无能力评分记录</strong><span>完成技能画像或模拟面试后，这里会持续沉淀能力变化。</span></div>
+        <div><el-icon class="empty-icon"><DataAnalysis /></el-icon><strong>{{ loadError ? '评分记录加载失败' : '暂无面试能力评分记录' }}</strong><span>自评技能不会自动生成验证历史；完成模拟面试并生成报告后，记录才会沉淀。</span></div>
       </div>
     </section>
   </div>
 </template>
 
 <style scoped>
+.self-assessment { margin-bottom: 20px; }
 .ability-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
 .ability-summary article { position: relative; display: flex; min-height: 96px; align-items: center; gap: 13px; overflow: hidden; padding: 18px 20px; border: 1px solid #bfd6f5; border-radius: 13px; background: linear-gradient(145deg, #fff, #f3f8ff); box-shadow: 0 10px 25px rgb(29 78 216 / 8%); transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard); }
 .ability-summary article::after { position: absolute; right: -32px; bottom: -48px; width: 110px; height: 110px; border: 16px solid rgb(59 130 246 / 8%); border-radius: 50%; content: ''; }

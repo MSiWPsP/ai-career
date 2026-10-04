@@ -2,6 +2,7 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import type { ApiResult } from '../types/api'
 import { tokenStorage, userStorage } from './storage'
+import { ApiRequestError } from './apiError'
 
 export interface RequestConfig extends AxiosRequestConfig {
   silent?: boolean
@@ -38,7 +39,7 @@ async function unwrap<T>(promise: Promise<AxiosResponse<ApiResult<T>>>): Promise
     if (window.location.pathname !== '/login') window.location.href = '/login'
   }
   if (!(response.config as RequestConfig).silent) ElMessage.error(result.message || '请求失败')
-  return Promise.reject(new Error(result.message || '请求失败'))
+  return Promise.reject(new ApiRequestError(result.message || '请求失败', result.code))
 }
 
 export const request = {

@@ -15,8 +15,9 @@ const props = withDefaults(
     data: AbilityRadar
     height?: number
     name?: string
+    emptyDescription?: string
   }>(),
-  { height: 300, name: '当前能力' },
+  { height: 300, name: '当前能力', emptyDescription: '完成模拟面试并生成报告后，这里会展示被考查维度的 AI 评估结果。' },
 )
 
 const chartRef = ref<HTMLDivElement>()
@@ -127,7 +128,7 @@ onBeforeUnmount(() => {
   <div v-else class="chart-empty">
     <el-icon class="empty-icon"><DataAnalysis /></el-icon>
     <strong>还没有能力数据</strong>
-    <small>完成技能画像或模拟面试后，这里会形成你的能力图谱。</small>
+    <small>{{ emptyDescription }}</small>
   </div>
 </template>
 
