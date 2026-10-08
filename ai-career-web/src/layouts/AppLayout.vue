@@ -158,7 +158,7 @@ function logout() {
         <span class="brand-mark"><img src="/ai-career-mark.png" alt="" /></span>
         <span>
           <strong>智职星</strong>
-          <small>智能职业成长平台</small>
+          <small>AI驱动下的软件技术专业学生职业成长平台</small>
         </span>
       </button>
 
