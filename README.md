@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./docs/assets/zhizhixing-logo.png" width="280" alt="智职星 Logo" />
 
-  <h1>智职星 · 大学生智能职业成长平台</h1>
+  <h1>智职星 · AI驱动下的软件技术专业学生职业成长平台  </h1>
 
   <p><strong>用 AI 点亮职业未来，让每一次规划、学习与面试都有迹可循。</strong></p>
 
