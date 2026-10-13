@@ -16,7 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +42,8 @@ public class UserSkillServiceImpl implements UserSkillService {
     public List<UserSkillVO> replaceCurrentUserSkills(UserSkillBatchDTO userSkillBatchDTO) {
         Long userId = UserContext.getUserId();
         validateNoDuplicateSkillNames(userSkillBatchDTO.getSkills());
+        Map<String, UserSkill> previousSkills = findSkills(userId).stream().collect(Collectors.toMap(
+                skill -> skill.getSkillName().trim().toLowerCase(Locale.ROOT), Function.identity()));
 
         userSkillMapper.delete(Wrappers.<UserSkill>lambdaQuery()
                 .eq(UserSkill::getUserId, userId));
@@ -47,8 +53,12 @@ public class UserSkillServiceImpl implements UserSkillService {
             skill.setSkillName(item.getSkillName().trim());
             skill.setSkillCategory(item.getSkillCategory().trim());
             skill.setLevel(item.getLevel());
-            skill.setScore(item.getLevel() * SCORE_PER_LEVEL);
-            skill.setSource("SELF");
+            UserSkill previous = previousSkills.get(skill.getSkillName().toLowerCase(Locale.ROOT));
+            // 全量替换不代表所有技能都重新自评：只编辑 Java 时，保留未修改 MySQL 的面试来源与融合分数。
+            boolean unchanged = previous != null && Objects.equals(previous.getLevel(), item.getLevel())
+                    && Objects.equals(previous.getSkillCategory(), skill.getSkillCategory());
+            skill.setScore(unchanged ? previous.getScore() : item.getLevel() * SCORE_PER_LEVEL);
+            skill.setSource(unchanged ? previous.getSource() : "SELF");
             userSkillMapper.insert(skill);
         }
         return findSkills(userId).stream()

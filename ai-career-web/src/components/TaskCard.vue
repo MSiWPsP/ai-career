@@ -3,9 +3,16 @@ import { computed } from 'vue'
 import { Check } from '@element-plus/icons-vue'
 import type { CareerTask } from '../types/api'
 import { formatDate } from '../utils/data'
+import { taskAction, taskCheckAction } from '../utils/taskActions'
 
-const props = defineProps<{ task: CareerTask; updating?: boolean }>()
+const props = defineProps<{ task: CareerTask; updating?: boolean; disabled?: boolean }>()
 const emit = defineEmits<{ changeStatus: [task: CareerTask, status: number] }>()
+const action = computed(() => taskAction(props.task.status))
+const checkAction = computed(() => taskCheckAction(props.task.status))
+
+function submit(target?: number) {
+  if (!props.updating && !props.disabled && target !== undefined) emit('changeStatus', props.task, target)
+}
 
 const priority = computed(() => {
   const map: Record<number, { label: string; type: 'danger' | 'warning' | 'info' }> = {
@@ -21,8 +28,9 @@ const priority = computed(() => {
   <article class="task-card" :class="{ completed: task.status === 2 }">
     <button
       class="task-check"
-      :aria-label="task.status === 2 ? '标记为进行中' : '标记为完成'"
-      @click="emit('changeStatus', task, task.status === 2 ? 1 : 2)"
+      :aria-label="checkAction.label"
+      :disabled="updating || disabled || checkAction.target === undefined"
+      @click="submit(checkAction.target)"
     >
       <el-icon v-if="task.status === 2"><Check /></el-icon>
     </button>
@@ -34,16 +42,19 @@ const priority = computed(() => {
       <p>{{ task.taskDescription || '完成本项成长任务，持续接近你的职业目标。' }}</p>
       <div class="task-meta">
         <span>{{ task.stageName }}</span>
-        <span>截止 {{ formatDate(task.deadline) }}</span>
+        <span>{{ task.deadline ? '截止 ' + formatDate(task.deadline) : '尚未排期' }}</span>
+        <span v-if="task.status === 3">已跳过</span>
+        <span v-if="task.status === 2">学生标记完成 · 非能力认证</span>
       </div>
     </div>
     <el-button
       :loading="updating"
+      :disabled="updating || disabled || action.target === undefined"
       :type="task.status === 2 ? 'success' : task.status === 1 ? 'primary' : 'default'"
       plain
-      @click="emit('changeStatus', task, task.status === 0 ? 1 : 2)"
+      @click="submit(action.target)"
     >
-      {{ task.status === 2 ? '已完成' : task.status === 1 ? '完成任务' : '开始任务' }}
+      {{ action.label }}
     </el-button>
   </article>
 </template>

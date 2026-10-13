@@ -25,6 +25,7 @@ class CareerPlannerPromptTests {
         String prompt = readPrompt("prompts/career-plan-generation-system.md");
 
         assertThat(prompt).contains("不输出推理过程、Markdown 或额外说明");
+        assertThat(prompt).contains("source=SELF", "尚待验证", "AI 参考估计", "不推断项目或团队经历");
     }
 
     @Test

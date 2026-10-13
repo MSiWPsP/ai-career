@@ -19,6 +19,10 @@ import { getInterviewHistory } from '../../api/interview'
 import { getProfile } from '../../api/profile'
 import { getTaskStatistics, getTasks, updateTaskStatus } from '../../api/task'
 import { getCurrentUser } from '../../api/user'
+import { getSkills } from '../../api/skill'
+import { selfAssessmentRadar } from '../../utils/skillAssessment'
+import { currentStageTasks, nextActionTask } from '../../utils/growthTasks'
+import { isNotFound } from '../../utils/apiError'
 import type {
   AbilityRadar,
   CareerPlan,
@@ -50,6 +54,9 @@ const statistics = ref<TaskStatistics>({
   completionRate: 0,
 })
 const radar = ref<AbilityRadar>({ indicators: [], values: [] })
+const selfRadar = ref<AbilityRadar>({ indicators: [], values: [] })
+const showingSelf = computed(() => !radar.value.indicators.length && !!selfRadar.value.indicators.length)
+const displayedRadar = computed(() => showingSelf.value ? selfRadar.value : radar.value)
 const latestInterview = ref<InterviewHistoryRecord>()
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -66,21 +73,20 @@ const greeting = computed(() => {
 const roadmap = computed(() =>
   parseJsonField<RoadmapStage[]>(plan.value?.roadmap, []),
 )
-const nextTask = computed(
-  () =>
-    tasks.value.find((task) => task.status === 1) ??
-    tasks.value.find((task) => task.status === 0),
-)
+const localToday = () => {
+  const now = new Date()
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-')
+}
+const stageTasks = computed(() => currentStageTasks(tasks.value, roadmap.value.map(stage => stage.name || '')))
+const nextTask = computed(() => nextActionTask(stageTasks.value, localToday()))
 const visibleTasks = computed(() =>
-  [...tasks.value]
-    .sort((a, b) => (a.status === 2 ? 1 : 0) - (b.status === 2 ? 1 : 0))
-    .slice(0, 3),
+  stageTasks.value.filter(task => task.status !== 3).slice(0, 3),
 )
 const abilityPriorities = computed(() =>
-  radar.value.indicators
+  displayedRadar.value.indicators
     .map((item, index) => ({
       name: item.name,
-      score: radar.value.values[index] ?? 0,
+      score: displayedRadar.value.values[index] ?? 0,
       max: item.max || 100,
     }))
     .sort((a, b) => a.score / a.max - b.score / b.max)
@@ -117,6 +123,8 @@ const steps = [
   { name: '反馈', path: '/ability' },
 ]
 const fallbackAction = computed(() => {
+  if (failures.value.some(name => ['职业画像', '职业规划', '学习任务'].includes(name)))
+    return { title: '成长数据暂时加载不完整', description: '请重新加载后查看下一步行动，避免依据缺失数据作判断。', label: '查看学习任务', path: '/tasks' }
   if (!profile.value?.targetPosition)
     return {
       title: '明确你的职业目标',
@@ -138,9 +146,11 @@ const fallbackAction = computed(() => {
       label: '查看规划',
       path: '/career/plan',
     }
+  if (tasks.value.some(task => task.status === 0))
+    return { title: '查看下一阶段学习安排', description: '后续任务尚未到计划开始日期，可以先回顾规划与时间安排。', label: '查看任务安排', path: '/tasks' }
   return {
     title: '用一次模拟面试检验成长',
-    description: '当前任务已完成，试试模拟面试，发现下一阶段的提升方向。',
+    description: '回顾已完成或跳过的任务，试试模拟面试，发现下一阶段的提升方向。',
     label: '开始面试',
     path: '/interview/setup',
   }
@@ -171,6 +181,7 @@ async function loadDashboard() {
     getTaskStatistics(silent),
     getAbilityRadar(silent),
     getInterviewHistory(1, 1, silent),
+    getSkills(silent),
   ])
   const names = [
     '用户信息',
@@ -182,7 +193,7 @@ async function loadDashboard() {
     '面试记录',
   ]
   results.forEach((result, index) => {
-    if (result.status === 'rejected') failures.value.push(names[index]!)
+    if (result.status === 'rejected' && !([1, 2].includes(index) && isNotFound(result.reason))) failures.value.push(names[index] || '技能画像')
   })
   if (results[0].status === 'fulfilled') user.value = results[0].value
   if (results[1].status === 'fulfilled') profile.value = results[1].value
@@ -194,6 +205,7 @@ async function loadDashboard() {
     radar.value = results[5].value
   if (results[6].status === 'fulfilled')
     latestInterview.value = results[6].value?.records[0]
+  if (results[7].status === 'fulfilled') selfRadar.value = selfAssessmentRadar(results[7].value)
   loading.value = false
 }
 async function changeTaskStatus(task: CareerTask, status: number) {
@@ -387,7 +399,7 @@ function openLatestInterview() {
           {{
             failures.includes('学习任务')
               ? '任务加载失败，请重试。'
-              : '还没有学习任务，先从职业规划生成你的行动计划。'
+              : tasks.length ? '当前阶段暂无可执行任务，可查看完整计划或开展模拟面试。' : '还没有学习任务，先从职业规划生成你的行动计划。'
           }}
         </p>
         <footer>
@@ -399,9 +411,9 @@ function openLatestInterview() {
       <article class="home-card">
         <div class="home-card-heading">
           <h2>
-            <el-icon><TrendCharts /></el-icon>能力提升重点
+            <el-icon><TrendCharts /></el-icon>{{ showingSelf ? '自评技能 · 待验证' : '能力提升重点' }}
           </h2>
-          <span class="card-note">基于技能与面试记录</span>
+          <span class="card-note">{{ showingSelf ? '自评不等于能力验证' : '基于 AI 面试评估记录' }}</span>
         </div>
         <div v-if="abilityPriorities.length" class="ability-list">
           <div

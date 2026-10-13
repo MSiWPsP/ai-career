@@ -7,6 +7,7 @@ import { generateCareerPlan, getCurrentPlan, getPlanById, getPlanHistory } from 
 import RoadmapTimeline from '../../components/RoadmapTimeline.vue'
 import type { CareerPlan, RoadmapStage } from '../../types/api'
 import { formatDate, parseJsonField } from '../../utils/data'
+import { isNotFound } from '../../utils/apiError'
 
 const router = useRouter()
 const loading = ref(true)
@@ -30,8 +31,11 @@ async function loadPlans() {
   ])
   if (currentResult.status === 'fulfilled') plan.value = currentResult.value
   if (historyResult.status === 'fulfilled') history.value = historyResult.value
-  if (currentResult.status === 'rejected' && historyResult.status === 'rejected') {
-    loadError.value = true
+  loadError.value = (currentResult.status === 'rejected' && !isNotFound(currentResult.reason))
+    || historyResult.status === 'rejected'
+  // 当前接口故障时，历史列表仍可阅读；不可据此断言用户没有规划。
+  if (currentResult.status === 'rejected' && historyResult.status === 'fulfilled' && !plan.value) {
+    plan.value = history.value.find(item => item.status === 1) ?? history.value[0]
   }
   loading.value = false
 }
@@ -73,16 +77,18 @@ async function generateFirstPlan() {
       </div>
       <div class="plan-actions">
         <el-button @click="router.push('/career/chat')">与 AI 讨论规划</el-button>
+        <el-button @click="router.push('/profile')">调整目标与学习时间</el-button>
         <el-button v-if="plan" type="primary" @click="router.push('/interviews')">根据面试反馈重新规划</el-button>
-        <el-button v-else type="primary" :loading="generating" @click="generateFirstPlan">生成职业规划</el-button>
+        <el-button v-else type="primary" :disabled="loading || loadError" :loading="generating" @click="generateFirstPlan">生成职业规划</el-button>
       </div>
     </header>
 
-    <el-alert v-if="loadError" type="error" :closable="false" show-icon title="职业规划加载失败" class="load-alert">
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon title="部分职业规划数据加载失败，已保留可用版本，请重试。" class="load-alert">
       <el-button link type="danger" @click="loadPlans">重新加载</el-button>
     </el-alert>
 
-    <template v-if="plan && !loadError">
+    <template v-if="plan">
+      <el-alert type="info" :closable="false" show-icon class="load-alert" title="自评技能是待验证的学习起点；AI 结论与匹配分数仅供参考，不证明项目、团队经历或岗位胜任能力。修改画像不会自动改写现有规划，当前重新规划须选择面试报告。" />
       <section class="plan-hero surface-card">
         <div>
           <span class="soft-label">规划 V{{ plan.version }} {{ plan.status === 1 ? '· 当前' : '· 历史' }}</span>
@@ -92,7 +98,7 @@ async function generateFirstPlan() {
         </div>
         <div class="match-score">
           <el-progress type="dashboard" :percentage="plan.matchScore || 0" :width="145" :stroke-width="12" />
-          <span>综合匹配度</span>
+          <span>AI 参考估计 · 非认证</span>
         </div>
       </section>
 

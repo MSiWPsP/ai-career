@@ -123,5 +123,10 @@ class CoreBusinessIntegrationTests {
 
         UserContext.setUserId(loginVO.getUserId());
         assertThat(careerChatContextService.getCurrentContext().profile().grade()).isEqualTo("大四");
+        // 全量替换的空集合应删除当前用户技能，刷新和 AI 上下文也必须保持为空。
+        skillBatchDTO.setSkills(List.of());
+        assertThat(userSkillService.replaceCurrentUserSkills(skillBatchDTO)).isEmpty();
+        assertThat(userSkillService.getCurrentUserSkills()).isEmpty();
+        assertThat(careerChatContextService.getCurrentContext().skills()).isEmpty();
     }
 }
