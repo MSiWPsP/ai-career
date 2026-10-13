@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import {
-  Aim,
   ArrowRight,
+  Calendar,
   ChatDotRound,
-  CircleCheck,
+  CircleCheckFilled,
+  Coin,
   Compass,
+  Document,
+  List,
+  Promotion,
   TrendCharts,
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
@@ -15,11 +19,8 @@ import { getInterviewHistory } from '../../api/interview'
 import { getProfile } from '../../api/profile'
 import { getTaskStatistics, getTasks, updateTaskStatus } from '../../api/task'
 import { getCurrentUser } from '../../api/user'
-import AbilityRadar from '../../components/AbilityRadar.vue'
-import AgentAvatar from '../../components/AgentAvatar.vue'
-import TaskCard from '../../components/TaskCard.vue'
 import type {
-  AbilityRadar as AbilityRadarData,
+  AbilityRadar,
   CareerPlan,
   CareerTask,
   InterviewHistoryRecord,
@@ -28,66 +29,139 @@ import type {
   UserInfo,
   UserProfile,
 } from '../../types/api'
-import { formatDate, interviewTypeLabel, parseJsonField } from '../../utils/data'
-
+import {
+  formatDate,
+  interviewTypeLabel,
+  parseJsonField,
+} from '../../utils/data'
 const router = useRouter()
 const loading = ref(true)
 const updatingTaskId = ref<string>()
+const failures = ref<string[]>([])
 const user = ref<UserInfo>()
 const profile = ref<UserProfile>()
 const plan = ref<CareerPlan>()
 const tasks = ref<CareerTask[]>([])
-const statistics = ref<TaskStatistics>({ total: 0, completed: 0, processing: 0, waiting: 0, completionRate: 0 })
-const radar = ref<AbilityRadarData>({ indicators: [], values: [] })
+const statistics = ref<TaskStatistics>({
+  total: 0,
+  completed: 0,
+  processing: 0,
+  waiting: 0,
+  completionRate: 0,
+})
+const radar = ref<AbilityRadar>({ indicators: [], values: [] })
 const latestInterview = ref<InterviewHistoryRecord>()
-
 const greeting = computed(() => {
   const hour = new Date().getHours()
-  if (hour < 6) return '夜深了'
-  if (hour < 11) return '早上好'
-  if (hour < 14) return '中午好'
-  if (hour < 18) return '下午好'
-  return '晚上好'
+  return hour < 6
+    ? '夜深了'
+    : hour < 11
+      ? '早上好'
+      : hour < 14
+        ? '中午好'
+        : hour < 18
+          ? '下午好'
+          : '晚上好'
 })
-
-const roadmap = computed(() => parseJsonField<RoadmapStage[]>(plan.value?.roadmap, []))
-const nextTask = computed(() => tasks.value.find((task) => task.status === 1) ?? tasks.value.find((task) => task.status === 0))
-
-const abilitySummary = computed(() => {
-  const items = radar.value.indicators.map((indicator, index) => ({
-    name: indicator.name,
-    score: radar.value.values[index] ?? 0,
-  }))
-  if (!items.length) return undefined
+const roadmap = computed(() =>
+  parseJsonField<RoadmapStage[]>(plan.value?.roadmap, []),
+)
+const nextTask = computed(
+  () =>
+    tasks.value.find((task) => task.status === 1) ??
+    tasks.value.find((task) => task.status === 0),
+)
+const visibleTasks = computed(() =>
+  [...tasks.value]
+    .sort((a, b) => (a.status === 2 ? 1 : 0) - (b.status === 2 ? 1 : 0))
+    .slice(0, 3),
+)
+const abilityPriorities = computed(() =>
+  radar.value.indicators
+    .map((item, index) => ({
+      name: item.name,
+      score: radar.value.values[index] ?? 0,
+      max: item.max || 100,
+    }))
+    .sort((a, b) => a.score / a.max - b.score / b.max)
+    .slice(0, 3),
+)
+// 用本地日历日比较截止日期，避免凌晨因 UTC 日期产生提醒偏移。
+const overdue = computed(() => {
+  const now = new Date()
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-')
+  return tasks.value.filter(
+    (task) =>
+      task.status < 2 && task.deadline && task.deadline.slice(0, 10) < today,
+  ).length
+})
+const activeStep = computed(() =>
+  !profile.value?.targetPosition
+    ? 0
+    : !plan.value
+      ? 1
+      : nextTask.value
+        ? 2
+        : latestInterview.value
+          ? 3
+          : 2,
+)
+const steps = [
+  { name: '定位', path: '/profile' },
+  { name: '规划', path: '/career/plan' },
+  { name: '执行', path: '/tasks' },
+  { name: '反馈', path: '/ability' },
+]
+const fallbackAction = computed(() => {
+  if (!profile.value?.targetPosition)
+    return {
+      title: '明确你的职业目标',
+      description: '补充目标岗位和学习时间，让建议更贴合你的情况。',
+      label: '完善画像',
+      path: '/profile',
+    }
+  if (!plan.value)
+    return {
+      title: '生成你的专属成长路线',
+      description: '结合职业画像和技能记录，规划接下来的学习方向。',
+      label: '生成规划',
+      path: '/career/plan',
+    }
+  if (!tasks.value.length)
+    return {
+      title: '把职业规划变成行动',
+      description: '前往职业规划页生成成长任务，从一个小目标开始。',
+      label: '查看规划',
+      path: '/career/plan',
+    }
   return {
-    average: Math.round(items.reduce((total, item) => total + item.score, 0) / items.length),
-    strongest: items.reduce((best, item) => item.score > best.score ? item : best),
-    weakest: items.reduce((weakest, item) => item.score < weakest.score ? item : weakest),
+    title: '用一次模拟面试检验成长',
+    description: '当前任务已完成，试试模拟面试，发现下一阶段的提升方向。',
+    label: '开始面试',
+    path: '/interview/setup',
   }
 })
-
-const interviewScoreStyle = computed(() => {
-  const score = Math.max(0, Math.min(100, latestInterview.value?.totalScore ?? 0))
-  return { background: `conic-gradient(#67e8f9 0 ${score}%, rgb(255 255 255 / 18%) ${score}% 100%)` }
-})
-
-const advice = computed(() => {
-  if (!profile.value?.targetPosition) {
-    return '先完善职业画像，明确目标岗位和可投入的学习时间，再据此制定接下来的成长路线。'
-  }
-  if (!radar.value.values.length) {
-    return '你的职业目标已经明确。下一步补充技能画像，能力雷达图会帮助你快速识别优先提升方向。'
-  }
-  const minScore = Math.min(...radar.value.values)
-  const index = radar.value.values.indexOf(minScore)
-  const ability = radar.value.indicators[index]?.name
-  return ability + ' 是当前能力画像中相对薄弱的一项（' + minScore + ' 分）。建议今天优先安排一个可完成的小任务进行强化。'
-})
-
+const checklist = computed(() => [
+  { name: '职业画像', done: !!profile.value?.targetPosition, path: '/profile' },
+  { name: '成长路线', done: !!plan.value, path: '/career/plan' },
+  { name: '学习实践', done: statistics.value.completed > 0, path: '/tasks' },
+  {
+    name: '模拟面试',
+    done: latestInterview.value?.status === 2,
+    path: '/interviews',
+  },
+])
+const completedChecks = computed(
+  () => checklist.value.filter((item) => item.done).length,
+)
 onMounted(loadDashboard)
-
 async function loadDashboard() {
   loading.value = true
+  failures.value = []
   const silent = { silent: true }
   const results = await Promise.allSettled([
     getCurrentUser(silent),
@@ -98,17 +172,32 @@ async function loadDashboard() {
     getAbilityRadar(silent),
     getInterviewHistory(1, 1, silent),
   ])
+  const names = [
+    '用户信息',
+    '职业画像',
+    '职业规划',
+    '学习任务',
+    '任务统计',
+    '能力数据',
+    '面试记录',
+  ]
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') failures.value.push(names[index]!)
+  })
   if (results[0].status === 'fulfilled') user.value = results[0].value
   if (results[1].status === 'fulfilled') profile.value = results[1].value
   if (results[2].status === 'fulfilled') plan.value = results[2].value
-  if (results[3].status === 'fulfilled') tasks.value = results[3].value
-  if (results[4].status === 'fulfilled') statistics.value = results[4].value
-  if (results[5].status === 'fulfilled') radar.value = results[5].value
-  if (results[6].status === 'fulfilled') latestInterview.value = results[6].value.records[0]
+  if (results[3].status === 'fulfilled') tasks.value = results[3].value ?? []
+  if (results[4].status === 'fulfilled' && results[4].value)
+    statistics.value = results[4].value
+  if (results[5].status === 'fulfilled' && results[5].value)
+    radar.value = results[5].value
+  if (results[6].status === 'fulfilled')
+    latestInterview.value = results[6].value?.records[0]
   loading.value = false
 }
-
 async function changeTaskStatus(task: CareerTask, status: number) {
+  if (updatingTaskId.value) return
   updatingTaskId.value = task.id
   try {
     const updated = await updateTaskStatus(task.id, status)
@@ -116,621 +205,903 @@ async function changeTaskStatus(task: CareerTask, status: number) {
     if (index >= 0) tasks.value[index] = updated
     statistics.value = await getTaskStatistics()
   } catch {
-    // 请求层已经展示错误信息；保留当前页面数据并结束本次更新。
+    // 请求层显示错误；保留成功保存的状态，不伪造完成统计。
   } finally {
     updatingTaskId.value = undefined
   }
 }
+function openLatestInterview() {
+  if (!latestInterview.value) return
+  void router.push(
+    latestInterview.value.status === 2
+      ? '/interview/' + latestInterview.value.id + '/report'
+      : '/interview/session/' + latestInterview.value.id,
+  )
+}
 </script>
-
 <template>
-  <div v-loading="loading" class="dashboard-page">
-    <header class="dashboard-heading">
+  <div v-loading="loading" class="growth-home">
+    <header class="growth-heading">
       <div>
         <h1>{{ greeting }}，{{ user?.nickname || '同学' }}</h1>
-        <p>看清方向，找到下一步。你的职业成长，从这里继续。</p>
+        <p>今天完成一小步，让成长看得见。</p>
       </div>
-      <el-button plain @click="router.push('/career/plan')">查看成长计划 <el-icon class="el-icon--right"><ArrowRight /></el-icon></el-button>
+      <span class="stage-pill"
+        ><el-icon><TrendCharts /></el-icon>职业成长进行中</span
+      >
     </header>
-
-    <section class="surface-card goal-feature">
-      <div class="goal-feature-main">
-        <span class="section-label">当前职业目标</span>
-        <h2>{{ profile?.targetPosition || plan?.targetPosition || '尚未设置职业目标' }}</h2>
-        <p>{{ plan ? '已结合职业画像与技能记录生成职业成长路线。' : '完善职业画像并生成规划，让成长路线更清晰。' }}</p>
-        <button class="text-link" @click="router.push('/profile')">{{ profile?.targetPosition ? '编辑职业目标' : '完善职业画像' }} <el-icon><ArrowRight /></el-icon></button>
+    <el-alert v-if="failures.length" type="warning" :closable="false" show-icon
+      ><template #title
+        >{{ failures.join('、') }}暂时加载失败，相关区域可能不完整。</template
+      ><el-button text type="primary" @click="loadDashboard"
+        >重新加载</el-button
+      ></el-alert
+    >
+    <section class="goal-strip">
+      <div class="goal-label">
+        <strong>目标岗位：</strong
+        ><span>{{
+          profile?.targetPosition || plan?.targetPosition || '尚未设置'
+        }}</span
+        ><button class="text-link" @click="router.push('/profile')">
+          调整目标 <el-icon><ArrowRight /></el-icon>
+        </button>
       </div>
-      <div class="goal-feature-next">
-        <span class="section-label">下一步行动</span>
-        <strong>{{ nextTask?.taskName || '从完善职业画像开始' }}</strong>
-        <small>{{ nextTask ? (nextTask.status === 1 ? '正在进行' : '待开始') + (nextTask.deadline ? ' · 截止 ' + formatDate(nextTask.deadline) : '') : '明确目标后即可获得个性化成长任务' }}</small>
-        <el-button type="primary" @click="router.push(nextTask ? '/tasks' : '/profile')">{{ nextTask ? '查看任务' : '完善画像' }} <el-icon class="el-icon--right"><ArrowRight /></el-icon></el-button>
-      </div>
+      <nav class="growth-steps" aria-label="职业成长流程">
+        <button
+          v-for="(step, index) in steps"
+          :key="step.name"
+          :class="{ current: index === activeStep }"
+          :aria-current="index === activeStep ? 'step' : undefined"
+          @click="router.push(step.path)"
+        >
+          <b>{{ index + 1 }}</b
+          >{{ step.name }}
+        </button>
+      </nav>
     </section>
-
-    <section class="metrics-grid">
-      <article class="metric-card">
-        <el-icon class="metric-icon"><Aim /></el-icon>
-        <div><p>职业匹配度</p><strong>{{ plan?.matchScore ?? '—' }}<small v-if="plan?.matchScore">%</small></strong></div>
-        <em>目标契合情况</em>
-      </article>
-      <article class="metric-card">
-        <el-icon class="metric-icon"><CircleCheck /></el-icon>
-        <div><p>任务完成率</p><strong>{{ statistics.completionRate }}<small>%</small></strong></div>
-        <em>{{ statistics.completed }}/{{ statistics.total }} 项已完成</em>
-      </article>
-      <article class="metric-card">
-        <el-icon class="metric-icon"><ChatDotRound /></el-icon>
-        <div><p>最近面试成绩</p><strong>{{ latestInterview?.totalScore ?? '—' }}<small v-if="latestInterview?.totalScore">分</small></strong></div>
-        <em>{{ latestInterview ? formatDate(latestInterview.createTime) : '等待首次面试' }}</em>
-      </article>
-      <article class="metric-card">
-        <el-icon class="metric-icon"><TrendCharts /></el-icon>
-        <div><p>成长任务</p><strong>{{ statistics.processing }}<small>项</small></strong></div>
-        <em>正在进行中</em>
-      </article>
-    </section>
-
-    <section class="section-grid two-column dashboard-main">
-      <article class="surface-card roadmap-panel">
-        <div class="card-header">
-          <div><h2>职业成长路线</h2><p>{{ plan ? '规划 V' + plan.version : '等待生成规划' }}</p></div>
-          <button class="text-link" @click="router.push('/career/plan')">查看规划 <el-icon><ArrowRight /></el-icon></button>
+    <section class="action-grid">
+      <article class="next-action">
+        <el-icon class="hero-art" aria-hidden="true"><Coin /></el-icon
+        ><span class="action-caption"
+          ><el-icon><Promotion /></el-icon>下一步行动</span
+        >
+        <h2>{{ nextTask?.taskName || fallbackAction.title }}</h2>
+        <p>
+          {{
+            nextTask?.taskDescription ||
+            (nextTask
+              ? '沿着当前成长路线，专注完成这项学习任务。'
+              : fallbackAction.description)
+          }}
+        </p>
+        <div class="action-meta">
+          <el-icon><Calendar /></el-icon
+          >{{
+            nextTask
+              ? nextTask.deadline
+                ? '截止 ' + formatDate(nextTask.deadline)
+                : '按你的学习节奏推进'
+              : '从一个小目标开始'
+          }}<span v-if="nextTask">{{
+            nextTask.status === 1 ? '进行中' : '待开始'
+          }}</span>
         </div>
-        <div v-if="roadmap.length" class="mini-roadmap">
-          <div v-for="(stage, index) in roadmap.slice(0, 4)" :key="stage.stage || index" class="mini-stage">
-            <span>{{ stage.stage || index + 1 }}</span>
-            <div>
-              <div class="mini-stage-heading">
-                <strong :title="stage.name">{{ stage.name }}</strong>
-                <small>{{ stage.duration || '持续推进' }}</small>
-              </div>
-              <p>{{ stage.goal || stage.topics?.slice(0, 3).join(' · ') || '围绕阶段目标持续完成对应成长任务。' }}</p>
-              <div v-if="stage.topics?.length" class="mini-stage-topics">
-                <span v-for="topic in stage.topics.slice(0, 3)" :key="topic">{{ topic }}</span>
-              </div>
-            </div>
+        <div class="hero-buttons">
+          <el-button
+            v-if="nextTask"
+            :loading="updatingTaskId === nextTask.id"
+            :disabled="!!updatingTaskId && updatingTaskId !== nextTask.id"
+            @click="changeTaskStatus(nextTask, nextTask.status === 1 ? 2 : 1)"
+            >{{ nextTask.status === 1 ? '标记完成' : '开始任务' }}</el-button
+          ><el-button v-else @click="router.push(fallbackAction.path)">{{
+            fallbackAction.label
+          }}</el-button
+          ><el-button class="hero-secondary" @click="router.push('/tasks')"
+            >查看学习任务</el-button
+          >
+        </div>
+        <span class="hero-process">明确目标 → 学习实践 → 面试复盘</span>
+      </article>
+      <article class="home-card todo-card">
+        <div class="home-card-heading">
+          <h2>
+            <el-icon><List /></el-icon>成长待办
+          </h2>
+          <button
+            class="text-link"
+            aria-label="查看成长待办"
+            @click="router.push('/tasks')"
+          >
+            <el-icon><ArrowRight /></el-icon>
+          </button>
+        </div>
+        <button class="todo-row" @click="router.push('/tasks')">
+          <i class="dot danger" /><span
+            ><b>{{ overdue }}</b> 项任务已超过截止日期</span
+          ></button
+        ><button class="todo-row" @click="router.push('/tasks')">
+          <i class="dot warning" /><span
+            ><b>{{ statistics.waiting }}</b> 项学习任务等待开始</span
+          ></button
+        ><button class="todo-row" @click="router.push('/tasks')">
+          <i class="dot primary" /><span
+            ><b>{{ statistics.processing }}</b> 项学习任务正在进行</span
+          >
+        </button>
+      </article>
+    </section>
+    <section class="home-grid">
+      <article class="home-card">
+        <div class="home-card-heading">
+          <div>
+            <h2>
+              <el-icon><Calendar /></el-icon>当前行动计划
+            </h2>
+            <p>已完成 {{ statistics.completed }} / {{ statistics.total }} 项</p>
+          </div>
+          <div class="completion">
+            <el-progress
+              :percentage="statistics.completionRate"
+              :stroke-width="8"
+              :show-text="false"
+            /><span>{{ statistics.completionRate }}%</span>
           </div>
         </div>
-        <div v-else class="empty-panel compact">
-          <div><el-icon class="empty-icon"><TrendCharts /></el-icon><strong>职业路线等待生成</strong><span>完善画像后即可开启个性化规划。</span></div>
-        </div>
-      </article>
-
-      <article class="surface-card tasks-panel">
-        <div class="card-header">
-          <div><h2>当前成长任务</h2><p>从最重要的一件事开始</p></div>
-          <span class="soft-label">{{ statistics.waiting }} 项待开始</span>
-        </div>
-        <div v-if="tasks.length" class="dashboard-tasks">
-          <TaskCard
-            v-for="task in tasks.slice(0, 3)"
-            :key="task.id"
-            :task="task"
-            :updating="updatingTaskId === task.id"
-            @change-status="changeTaskStatus"
-          />
-        </div>
-        <div v-else class="empty-panel compact">
-          <div><el-icon class="empty-icon"><CircleCheck /></el-icon><strong>暂无成长任务</strong><span>生成职业规划后，任务会出现在这里。</span></div>
-        </div>
-        <button class="panel-footer-link" @click="router.push('/tasks')">查看全部成长任务 <el-icon><ArrowRight /></el-icon></button>
-      </article>
-    </section>
-
-    <article class="advice-card">
-      <el-icon class="advice-icon"><Compass /></el-icon>
-      <div><p>今日建议</p><strong>{{ advice }}</strong></div>
-      <button @click="router.push('/career/chat')">与职业规划师讨论 <el-icon><ArrowRight /></el-icon></button>
-    </article>
-
-    <section class="section-grid two-column dashboard-bottom">
-      <article class="surface-card radar-panel">
-        <div class="card-header">
-          <div><h2>我的能力画像</h2><p>基于最近的技能与能力评分</p></div>
-          <div class="ability-header-actions">
-            <span v-if="abilitySummary" class="ability-live"><i />动态画像</span>
-            <button class="text-link" @click="router.push('/ability')">查看详情 <el-icon><ArrowRight /></el-icon></button>
+        <div v-if="visibleTasks.length" class="compact-tasks">
+          <div v-for="task in visibleTasks" :key="task.id" class="compact-task">
+            <el-icon v-if="task.status === 2" class="task-check"
+              ><CircleCheckFilled /></el-icon
+            ><i
+              v-else
+              class="task-circle"
+              :class="{ running: task.status === 1 }"
+            /><strong :title="task.taskName">{{ task.taskName }}</strong
+            ><small>{{
+              task.deadline ? formatDate(task.deadline) : '未设截止日'
+            }}</small
+            ><el-button
+              size="small"
+              :type="task.status === 0 ? 'primary' : undefined"
+              :disabled="
+                task.status === 2 ||
+                (!!updatingTaskId && updatingTaskId !== task.id)
+              "
+              :loading="updatingTaskId === task.id"
+              @click="
+                task.status === 0
+                  ? changeTaskStatus(task, 1)
+                  : router.push('/tasks')
+              "
+              >{{
+                task.status === 2
+                  ? '已完成'
+                  : task.status === 1
+                    ? '继续'
+                    : '开始'
+              }}</el-button
+            >
           </div>
         </div>
-        <div class="ability-dashboard-body" :class="{ 'is-empty': !abilitySummary }">
-          <div class="radar-visual"><AbilityRadar :data="radar" :height="310" /></div>
-          <aside v-if="abilitySummary" class="ability-insights">
-            <div class="ability-average">
-              <span>综合均值</span>
-              <strong>{{ abilitySummary.average }}<small>分</small></strong>
-              <i><b :style="{ width: abilitySummary.average + '%' }" /></i>
-            </div>
-            <div class="ability-insight is-strong">
-              <span>当前优势</span>
-              <strong>{{ abilitySummary.strongest.name }}</strong>
-              <small>{{ abilitySummary.strongest.score }} 分</small>
-            </div>
-            <div class="ability-insight is-focus">
-              <span>优先提升</span>
-              <strong>{{ abilitySummary.weakest.name }}</strong>
-              <small>{{ abilitySummary.weakest.score }} 分</small>
-            </div>
-          </aside>
-        </div>
+        <p v-else class="home-empty">
+          {{
+            failures.includes('学习任务')
+              ? '任务加载失败，请重试。'
+              : '还没有学习任务，先从职业规划生成你的行动计划。'
+          }}
+        </p>
+        <footer>
+          <button class="text-link" @click="router.push('/tasks')">
+            查看完整学习计划 <el-icon><ArrowRight /></el-icon>
+          </button>
+        </footer>
       </article>
-      <article class="surface-card recent-panel">
-        <div class="card-header"><div><h2>最近一次模拟面试</h2><p>持续练习，也持续复盘</p></div></div>
-        <div v-if="latestInterview" class="recent-interview">
-          <AgentAvatar class="interview-watermark" role="interviewer" :size="176" aria-hidden="true" />
-          <div class="score-ring" :style="interviewScoreStyle"><div><strong>{{ latestInterview.totalScore ?? '—' }}</strong><span>综合评分</span></div></div>
-          <div class="interview-summary">
-            <span class="soft-label">{{ interviewTypeLabel[latestInterview.interviewType] || latestInterview.interviewType }}</span>
-            <h3>{{ latestInterview.targetPosition }}</h3>
-            <p>{{ formatDate(latestInterview.createTime) }} · {{ latestInterview.difficulty }}</p>
+      <article class="home-card">
+        <div class="home-card-heading">
+          <h2>
+            <el-icon><TrendCharts /></el-icon>能力提升重点
+          </h2>
+          <span class="card-note">基于技能与面试记录</span>
+        </div>
+        <div v-if="abilityPriorities.length" class="ability-list">
+          <div
+            v-for="item in abilityPriorities"
+            :key="item.name"
+            class="ability-row"
+          >
+            <strong>{{ item.name }}</strong
+            ><el-progress
+              :percentage="
+                Math.max(
+                  0,
+                  Math.min(100, Math.round((item.score / item.max) * 100)),
+                )
+              "
+              :show-text="false"
+              :stroke-width="10"
+            /><span>当前 {{ item.score }} / {{ item.max }}</span>
           </div>
-          <el-button type="primary" plain @click="router.push('/interview/' + latestInterview.id + '/report')">查看报告</el-button>
         </div>
-        <div v-else class="empty-panel compact">
-          <div><el-icon class="empty-icon"><ChatDotRound /></el-icon><strong>还没有模拟面试记录</strong><span>准备好后，完成你的第一次模拟面试。</span></div>
+        <p v-else class="home-empty">
+          {{
+            failures.includes('能力数据')
+              ? '能力数据加载失败，请重试。'
+              : '补充技能或完成模拟面试，逐步点亮你的能力画像。'
+          }}
+        </p>
+        <footer>
+          <button class="text-link" @click="router.push('/ability')">
+            查看能力画像与趋势 <el-icon><ArrowRight /></el-icon>
+          </button>
+        </footer>
+      </article>
+      <article class="home-card">
+        <div class="home-card-heading">
+          <h2>
+            <el-icon><ChatDotRound /></el-icon>面试反馈与复盘
+          </h2>
+          <span v-if="latestInterview" class="soft-label">{{
+            latestInterview.totalScore == null
+              ? '尚未评分'
+              : latestInterview.totalScore + ' 分'
+          }}</span>
+        </div>
+        <template v-if="latestInterview"
+          ><span class="card-note"
+            >最近一次{{
+              interviewTypeLabel[latestInterview.interviewType] || '模拟面试'
+            }}
+            · {{ formatDate(latestInterview.createTime) }}</span
+          >
+          <h3>{{ latestInterview.targetPosition }}</h3>
+          <p class="body-note">
+            回顾本次回答与面试反馈，把薄弱点转化为下一步学习方向。
+          </p></template
+        >
+        <p v-else class="home-empty">
+          {{
+            failures.includes('面试记录')
+              ? '面试记录加载失败，请重试。'
+              : '还没有面试记录。试一次模拟面试，让练习有反馈。'
+          }}
+        </p>
+        <footer>
+          <el-button
+            v-if="latestInterview"
+            plain
+            type="primary"
+            @click="openLatestInterview"
+            >{{
+              latestInterview.status === 2 ? '查看面试报告' : '继续面试'
+            }}</el-button
+          ><el-button type="primary" @click="router.push('/interview/setup')"
+            >开始模拟面试</el-button
+          >
+        </footer>
+      </article>
+      <article class="home-card">
+        <div class="home-card-heading">
+          <h2>
+            <el-icon><Document /></el-icon>职业成长路线
+          </h2>
+          <span class="card-note">{{
+            plan ? '规划 V' + plan.version : '尚未生成'
+          }}</span>
+        </div>
+        <div v-if="roadmap.length" class="roadmap-list">
+          <div v-for="(stage, index) in roadmap.slice(0, 3)" :key="index">
+            <b>{{ index + 1 }}</b
+            ><strong>{{ stage.name }}</strong
+            ><span>{{ stage.duration || '持续推进' }}</span>
+          </div>
+        </div>
+        <p v-else class="home-empty">
+          {{
+            failures.includes('职业规划')
+              ? '职业规划加载失败，请重试。'
+              : '结合你的目标与技能，生成可执行的阶段成长路线。'
+          }}
+        </p>
+        <footer>
+          <button class="text-link" @click="router.push('/career/plan')">
+            {{ plan ? '查看完整职业规划' : '生成职业规划' }}
+            <el-icon><ArrowRight /></el-icon>
+          </button>
+        </footer>
+      </article>
+      <article class="home-card">
+        <div class="home-card-heading">
+          <h2>
+            <el-icon><Compass /></el-icon>职业方向探索
+          </h2>
+        </div>
+        <p class="body-note">不确定下一步？和 AI 职业规划师聊聊你的目标。</p>
+        <div class="explore-actions">
+          <button @click="router.push('/career/chat')">
+            <el-icon><ChatDotRound /></el-icon><span>咨询职业方向</span
+            ><el-icon><ArrowRight /></el-icon></button
+          ><button @click="router.push('/profile')">
+            <el-icon><Compass /></el-icon><span>完善职业画像</span
+            ><el-icon><ArrowRight /></el-icon>
+          </button>
         </div>
       </article>
-
+      <article class="home-card">
+        <div class="home-card-heading">
+          <h2>
+            <el-icon><List /></el-icon>成长准备清单
+          </h2>
+          <span class="card-note">已点亮 {{ completedChecks }} / 4 项</span>
+        </div>
+        <div class="readiness-list">
+          <button
+            v-for="item in checklist"
+            :key="item.name"
+            @click="router.push(item.path)"
+          >
+            <el-icon :class="{ ready: item.done }"
+              ><CircleCheckFilled v-if="item.done" /><Compass v-else /></el-icon
+            ><strong>{{ item.name }}</strong
+            ><small :class="{ ready: item.done }">{{
+              item.done ? '已有记录' : '待完善'
+            }}</small>
+          </button>
+        </div>
+      </article>
     </section>
   </div>
 </template>
-
 <style scoped>
-.dashboard-page {
-  position: relative;
-  overflow-x: clip;
-}
-
-.dashboard-page::before {
-  position: absolute;
-  z-index: -1;
-  top: -120px;
-  right: -80px;
-  width: 520px;
-  height: 420px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgb(96 165 250 / 16%) 0%, transparent 68%);
-  content: '';
-  pointer-events: none;
-}
-
-.dashboard-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 22px;
-}
-
-.dashboard-heading h1 { margin: 0; color: var(--text); font-size: 28px; line-height: 1.35; }
-.dashboard-heading p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
-.dashboard-heading .el-button { margin-top: 2px; border-color: var(--line); border-radius: 7px; color: var(--primary-dark); }
-
-.goal-feature {
-  position: relative;
+.growth-home {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.75fr);
-  overflow: hidden;
-  margin-bottom: 14px;
-  border-color: var(--primary);
-  color: #fff;
-  background: radial-gradient(ellipse at 80% 0%, rgb(56 189 248 / 14%), transparent 65%), linear-gradient(115deg, #142b49, #10213a);
-  background-size: auto;
-  box-shadow: 0 18px 40px rgb(29 78 216 / 18%);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
 }
-
-.goal-feature::after { display: none; }
-
-.goal-feature-main,
-.goal-feature-next { position: relative; z-index: 1; min-width: 0; padding: 24px 27px; }
-.goal-feature-main h2 { margin: 8px 0; color: #fff; font-size: 25px; line-height: 1.4; overflow-wrap: anywhere; }
-.goal-feature-main p { margin: 0 0 16px; color: #dbeafe; font-size: 13px; line-height: 1.6; }
-.goal-feature-next { display: flex; flex-direction: column; align-items: flex-start; border-left: 1px solid rgb(255 255 255 / 20%); background: rgb(8 39 96 / 18%); backdrop-filter: blur(8px); }
-.goal-feature-next strong { margin: 9px 0 5px; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
-.goal-feature-next small { margin-bottom: 16px; color: #dbeafe; font-size: 12px; line-height: 1.5; }
-.goal-feature-next .el-button { margin-top: auto; border-color: #fff; border-radius: 7px; color: var(--primary); background: var(--surface); }
-.goal-feature .section-label { color: #bfdbfe; }
-.goal-feature .text-link { color: #fff; }
-.section-label { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
-
-.text-link,
-.panel-footer-link,
-.advice-card button {
-  border: 0;
+.growth-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 4px 6px;
+}
+.growth-heading h1 {
+  margin: 0 0 7px;
+  font-size: 30px;
+  letter-spacing: -0.8px;
+}
+.growth-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+.stage-pill {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 10px 15px;
+  border-radius: 24px;
   color: var(--primary);
+  background: #e9ecff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.goal-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+}
+.goal-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+}
+.goal-label .text-link {
+  margin-left: 12px;
+}
+.growth-steps {
+  display: flex;
+  gap: 16px;
+}
+.growth-steps button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
   background: transparent;
   cursor: pointer;
+  white-space: nowrap;
   font-size: 12px;
+}
+.growth-steps button:not(:last-child)::after {
+  width: 15px;
+  height: 1px;
+  margin-left: 6px;
+  background: #c8cce3;
+  content: '';
+}
+.growth-steps b {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #eef0f7;
+  color: #69718f;
+}
+.growth-steps .current {
+  color: var(--primary);
   font-weight: 700;
 }
-
-.text-link,
-.advice-card button {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+.growth-steps .current b {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 5px #4c5cf133;
 }
-
-.metrics-grid {
+.action-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 16px;
 }
-
-.metric-card {
+.next-action {
   position: relative;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 10px;
   overflow: hidden;
-  padding: 17px 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: 0 5px 18px rgb(23 49 92 / 5%);
-  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
+  padding: 24px 30px;
+  border-radius: 14px;
+  background: linear-gradient(115deg, #4e5de9, #8094f5);
+  color: white;
+  min-height: 236px;
+  box-shadow: 0 5px 16px #5465dd14;
 }
-
-.metric-card::after {
+.next-action::after {
   position: absolute;
-  inset: auto 0 0;
-  height: 3px;
-  background: linear-gradient(90deg, #2563eb, #38bdf8);
-  content: '';
-  opacity: .72;
-  transform: scaleX(.22);
-  transform-origin: left;
-  transition: transform var(--motion-normal) var(--ease-standard);
-}
-
-.metric-card:hover {
-  border-color: var(--line);
-  box-shadow: 0 16px 34px rgb(29 78 216 / 12%);
-  transform: translateY(-4px);
-}
-
-.metric-card:hover::after {
-  transform: scaleX(1);
-}
-
-.metric-icon {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 7px;
-  color: var(--primary);
-  background: linear-gradient(145deg, var(--primary-soft), #1b3452);
-  font-size: 18px;
-  box-shadow: inset 0 0 0 1px rgb(147 197 253 / 24%);
-  transition: transform var(--motion-normal) var(--ease-standard);
-}
-
-.metric-card:hover .metric-icon { transform: scale(1.08) rotate(-4deg); }
-
-.metric-card p { margin: 0 0 5px; color: var(--muted); font-size: 12px; }
-.metric-card strong { color: var(--primary-dark); font-size: 26px; line-height: 1.2; }
-.metric-card small { margin-left: 3px; font-size: 13px; }
-.metric-card em { grid-column: 1 / -1; color: var(--muted); font-size: 11px; font-style: normal; }
-
-.radar-panel,
-.tasks-panel,
-.recent-panel,
-.roadmap-panel { padding: 22px 24px; }
-
-.dashboard-main { align-items: stretch; }
-
-.dashboard-bottom > .surface-card,
-.roadmap-panel,
-.mini-roadmap,
-.mini-stage,
-.mini-stage > div {
-  min-width: 0;
-}
-
-.roadmap-panel {
-  position: relative;
-  display: flex;
-  min-height: 360px;
-  flex-direction: column;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, var(--surface-subtle), transparent 36%),
-    var(--surface);
-}
-
-.roadmap-panel::before {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, #1d4ed8, #38bdf8 56%, transparent);
-  content: '';
-}
-
-.tasks-panel { min-height: 360px; }
-
-.dashboard-tasks :deep(.task-card) { grid-template-columns: 22px 1fr; padding: 13px 12px; }
-.dashboard-tasks :deep(.task-card > .el-button),
-.dashboard-tasks :deep(.task-title-row .el-tag) { display: none; }
-
-.panel-footer-link {
-  width: calc(100% + 48px);
-  margin: 4px -24px -22px;
-  padding: 15px 24px;
-  border-top: 1px solid var(--line);
-  text-align: left;
-}
-
-.panel-footer-link:hover,
-.text-link:hover { color: var(--primary-dark); }
-
-.panel-footer-link .el-icon { float: right; }
-
-.advice-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 15px;
-  margin: 22px 0;
-  padding: 17px 20px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--text);
-  overflow: hidden;
-  background: linear-gradient(100deg, var(--primary-soft), var(--surface-subtle) 62%, var(--surface-subtle));
-  box-shadow: 0 8px 22px rgb(29 78 216 / 7%);
-  transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
-}
-
-.advice-card:hover { box-shadow: 0 15px 32px rgb(29 78 216 / 13%); transform: translateY(-2px); }
-
-.advice-icon {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 7px;
-  color: var(--primary);
-  background: var(--surface);
-  font-size: 19px;
-}
-
-.advice-card p { margin: 0 0 4px; color: var(--primary-dark); font-size: 12px; font-weight: 700; }
-.advice-card strong { font-size: 13px; font-weight: 500; line-height: 1.65; }
-.advice-card button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); white-space: nowrap; }
-
-.recent-panel {
-  position: relative;
-  overflow: hidden;
-  border-color: var(--primary);
-  color: #fff;
-  background: linear-gradient(145deg, #13263f, #102038);
-  box-shadow: 0 16px 38px rgb(23 70 154 / 17%);
-}
-
-.recent-panel .card-header { position: relative; z-index: 2; }
-.recent-panel .card-header h2 { color: #fff; }
-.recent-panel .card-header p { color: #bfdbfe; }
-
-.recent-interview {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  min-height: 250px;
-  grid-template-columns: 88px 1fr auto;
-  align-items: center;
-  gap: 18px;
-}
-
-.score-ring {
-  position: relative;
-  display: grid;
-  width: 84px;
-  height: 84px;
-  padding: 7px;
-  place-content: center;
+  width: 360px;
+  height: 360px;
   border-radius: 50%;
-  text-align: center;
-  box-shadow: 0 0 30px rgb(103 232 249 / 30%);
-  animation: score-pop 520ms var(--ease-standard) both;
-}
-
-.score-ring::after {
-  position: absolute;
-  inset: 7px;
-  border-radius: inherit;
-  background: var(--surface);
+  background: #ffffff09;
+  top: -120px;
+  right: -95px;
   content: '';
-}
-
-.score-ring strong,
-.score-ring span { position: relative; z-index: 1; display: block; }
-.score-ring strong { color: #fff; font-size: 24px; }
-.score-ring span { color: #bfdbfe; font-size: 10px; }
-.interview-summary { position: relative; z-index: 2; }
-.interview-summary h3 { margin: 10px 0 6px; font-size: 16px; }
-.interview-summary p { margin: 0; color: #bfdbfe; font-size: 12px; }
-.recent-panel .soft-label { border-color: rgb(255 255 255 / 18%); color: #dbeafe; background: var(--surface); }
-.recent-panel .el-button { position: relative; z-index: 2; border-color: rgb(255 255 255 / 70%); color: #fff; background: var(--surface); backdrop-filter: blur(6px); }
-.recent-panel .el-button:hover { border-color: #fff; color: var(--primary); background: var(--surface); }
-
-.interview-watermark {
-  position: absolute;
-  z-index: 0;
-  right: -48px;
-  bottom: -62px;
-  border: 8px solid rgb(255 255 255 / 32%);
-  opacity: .28;
-  box-shadow: 0 0 0 24px rgb(255 255 255 / 5%);
   pointer-events: none;
 }
-
-@keyframes score-pop {
-  from { opacity: 0; transform: scale(.72) rotate(-20deg); }
-  to { opacity: 1; transform: scale(1) rotate(0); }
+.action-caption {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  opacity: 0.92;
 }
-
-.radar-panel {
+.next-action h2 {
   position: relative;
+  max-width: 78%;
+  margin: 16px 0 8px;
+  font-size: 25px;
+  line-height: 1.3;
+}
+.next-action p {
+  position: relative;
+  max-width: 76%;
+  margin: 0 0 9px;
+  font-size: 13px;
+  color: #eef0ff;
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 110%, rgb(59 130 246 / 14%), transparent 42%),
-    linear-gradient(135deg, var(--surface) 0%, var(--surface-subtle) 100%);
-  box-shadow: 0 12px 34px rgb(23 49 92 / 8%);
 }
-
-.ability-header-actions { display: flex; align-items: center; gap: 15px; }
-.ability-live { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-size: 11px; font-weight: 700; }
-.ability-live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 5px rgb(34 197 94 / 10%);  }
-
-@keyframes live-pulse {
-  50% { box-shadow: 0 0 0 9px rgb(34 197 94 / 0%); }
+.action-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #ecedff;
 }
-
-.ability-dashboard-body {
-  display: grid;
-  min-height: 310px;
-  grid-template-columns: minmax(0, 1fr) 180px;
+.action-meta span {
+  padding-left: 8px;
+  border-left: 1px solid #ffffff55;
+  margin-left: 5px;
+}
+.hero-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.hero-buttons .el-button {
+  height: 38px;
+  min-width: 132px;
+  margin: 0;
+  color: var(--primary);
+  border: 1px solid #eff0ff;
+  background: white;
+  font-weight: 600;
+}
+.hero-buttons .hero-secondary {
+  background: #ffffff08;
+  color: white;
+  border-color: #c6ceff;
+}
+.hero-art {
+  position: absolute;
+  right: 36px;
+  top: 28px;
+  font-size: 94px;
+  color: #c5d0ff;
+  opacity: 0.6;
+  transform: rotate(-8deg);
+}
+.hero-process {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 16px;
+  border-radius: 11px;
+  background: #e3e8ffb3;
+  color: #324386;
+  font-size: 11px;
+}
+.home-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 19px 22px 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px #555d9b03;
+}
+.home-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.home-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 18px;
+  white-space: nowrap;
+}
+.home-card h2 > .el-icon {
+  color: var(--primary);
+  font-size: 24px;
+}
+.home-card-heading p {
+  margin: 6px 0 0 34px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.home-card h3 {
+  margin: 9px 0;
+  font-size: 19px;
+}
+.home-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+.home-card footer .el-button + .el-button {
+  margin: 0;
+}
+.card-note,
+.body-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+.body-note {
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+.home-empty {
+  margin: 10px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.todo-row {
+  display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 12px 0;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
 }
-
-.ability-dashboard-body.is-empty { grid-template-columns: 1fr; }
-.radar-visual { min-width: 0; }
-
-.ability-insights {
+.todo-row:hover {
+  color: var(--primary);
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.dot.danger {
+  background: #df5657;
+}
+.dot.warning {
+  background: #e7ad4b;
+}
+.dot.primary {
+  background: #6678f7;
+}
+.home-grid {
   display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.completion {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+  width: 35%;
+}
+.completion .el-progress {
+  flex: 1;
+}
+.compact-task {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto 64px;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  border-bottom: 1px solid #edf0f8;
+  font-size: 12px;
+}
+.compact-task strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.compact-task small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.task-check {
+  color: var(--success);
+  font-size: 19px;
+}
+.task-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #b6bcd1;
+}
+.task-circle.running {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.ability-list {
+  display: grid;
+  gap: 20px;
+  padding: 8px 0;
+}
+.ability-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 102px;
+  gap: 14px;
+  align-items: center;
+  font-size: 12px;
+}
+.ability-row strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ability-row > span {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+.roadmap-list > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #edf0f8;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.roadmap-list b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  flex: none;
+}
+.roadmap-list strong {
+  flex: 1;
+  font-weight: 600;
+}
+.roadmap-list span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.explore-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-
-.ability-average,
-.ability-insight {
-  padding: 14px;
+.explore-actions button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e0e5ff;
+  border-radius: 9px;
+  color: var(--text);
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+.explore-actions button:hover {
+  background: var(--primary-soft);
+}
+.explore-actions .el-icon {
+  color: var(--primary);
+  font-size: 19px;
+}
+.explore-actions span {
+  flex: 1;
+}
+.readiness-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: auto;
+}
+.readiness-list button {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--surface);
-  box-shadow: 0 7px 18px rgb(23 49 92 / 5%);
-}
-
-.ability-average > span,
-.ability-insight > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
-.ability-average strong { color: var(--primary-dark); font-size: 25px; }
-.ability-average strong small { margin-left: 2px; font-size: 11px; }
-.ability-average > i { display: block; height: 4px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #1b3452; }
-.ability-average > i b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2563eb, #38bdf8); }
-.ability-insight { position: relative; overflow: hidden; padding-left: 18px; }
-.ability-insight::before { position: absolute; inset: 0 auto 0 0; width: 4px; background: #38bdf8; content: ''; }
-.ability-insight.is-focus::before { background: #2563eb; }
-.ability-insight strong { display: block; overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.ability-insight small { display: block; margin-top: 5px; color: var(--primary); font-size: 11px; font-weight: 700; }
-
-.mini-roadmap {
-  display: flex;
-  width: 100%;
-  min-height: 260px;
-  flex: 1;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.mini-stage {
-  position: relative;
-  display: grid;
-  min-height: 82px;
-  flex: 1;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 14px;
-  min-width: 0;
-  padding: 13px 14px 13px 12px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  text-align: left;
-  background: var(--surface);
-  box-shadow: 0 6px 16px rgb(23 49 92 / 4%);
-  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
-}
-
-.mini-stage:hover { border-color: var(--line); box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateX(5px); }
-
-.mini-stage:not(:last-child)::after {
-  position: absolute;
-  z-index: 2;
-  width: 2px;
-  height: 12px;
-  top: calc(100% + 1px);
-  left: 29px;
-  background: linear-gradient(#60a5fa, var(--surface-subtle));
-  content: '';
-}
-
-.mini-stage > span {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 50%;
-  color: #fff;
-  background: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 7px 16px rgb(29 78 216 / 22%);
-}
-
-.mini-stage > div { min-width: 0; }
-.mini-stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; }
-.mini-stage strong {
-  display: block;
-  overflow: hidden;
   color: var(--text);
-  font-size: 13px;
-  line-height: 1.4;
-  text-overflow: ellipsis;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+}
+.readiness-list button:hover {
+  border-color: var(--primary);
+}
+.readiness-list .el-icon {
+  grid-row: span 2;
+  font-size: 20px;
+  color: var(--primary);
+}
+.readiness-list strong {
+  font-size: 11px;
   white-space: nowrap;
 }
-.mini-stage small {
-  flex: 0 0 auto;
+.readiness-list small {
   color: var(--muted);
   font-size: 10px;
-  white-space: nowrap;
 }
-.mini-stage p { display: -webkit-box; margin: 6px 0 0; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.mini-stage-topics { display: flex; gap: 5px; margin-top: 8px; overflow: hidden; }
-.mini-stage-topics span { overflow: hidden; padding: 3px 7px; border-radius: 5px; color: var(--primary); background: var(--primary-soft); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.compact { min-height: 145px; padding: 12px; font-size: 12px; }
-.compact .empty-icon { width: 44px; height: 44px; }
-
-@media (max-width: 1160px) {
-  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-  .two-column { grid-template-columns: 1fr; }
-  .roadmap-panel,
-  .tasks-panel { min-height: 0; }
+.readiness-list .ready {
+  color: var(--success);
 }
-
-@media (max-width: 720px) {
-  .dashboard-heading { align-items: stretch; flex-direction: column; }
-  .dashboard-heading .el-button { align-self: flex-start; }
-  .goal-feature { grid-template-columns: 1fr; }
-  .goal-feature-next { border-top: 1px solid var(--line); border-left: 0; }
-  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .metric-card { grid-template-columns: 34px minmax(0, 1fr); padding: 14px 12px; }
-  .metric-icon { width: 32px; height: 32px; }
-  .metric-card strong { font-size: 22px; }
-  .advice-card { grid-template-columns: 38px 1fr; }
-  .advice-card button { grid-column: 2; justify-self: start; }
-  .recent-interview { grid-template-columns: 80px 1fr; }
-  .recent-interview > .el-button { grid-column: 2; justify-self: start; }
-  .ability-dashboard-body { grid-template-columns: 1fr; }
-  .ability-insights { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-
-  .mini-stage-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+@media (min-width: 1600px) {
+  .home-card {
+    padding: 23px 26px 18px;
+  }
+  .home-card h2 {
+    font-size: 20px;
+  }
+  .next-action {
+    min-height: 248px;
+  }
+  .compact-task {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .ability-row {
+    font-size: 14px;
+  }
 }
-
-@media (max-width: 520px) {
-  .ability-header-actions { align-items: flex-end; flex-direction: column; gap: 7px; }
-  .ability-insights { grid-template-columns: 1fr; }
-  .mini-stage { padding-right: 10px; }
-  .mini-stage-topics { display: none; }
+@media (max-width: 1200px) {
+  .hero-process {
+    display: none;
+  }
+  .growth-steps {
+    gap: 10px;
+  }
+  .growth-steps button:not(:last-child)::after {
+    display: none;
+  }
+  .readiness-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .home-card-heading {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 760px) {
+  .action-grid,
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+  .goal-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .growth-steps {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .stage-pill {
+    display: none;
+  }
+  .growth-heading h1 {
+    font-size: 25px;
+  }
+  .next-action {
+    padding: 22px;
+  }
+  .home-card {
+    padding: 18px;
+  }
+}
+@media (max-width: 420px) {
+  .growth-heading p {
+    font-size: 13px;
+  }
+  .goal-label {
+    font-size: 12px;
+  }
+  .goal-label .text-link {
+    margin-left: 0;
+  }
+  .hero-art {
+    font-size: 62px;
+    right: 15px;
+  }
+  .next-action h2 {
+    font-size: 22px;
+    max-width: 85%;
+  }
+  .hero-buttons .el-button {
+    min-width: 0;
+    flex: 1;
+  }
+  .ability-row {
+    grid-template-columns: 70px minmax(0, 1fr) 85px;
+    gap: 8px;
+  }
+  .compact-task {
+    grid-template-columns: 16px minmax(0, 1fr) 54px;
+  }
+  .compact-task small {
+    display: none;
+  }
+  .explore-actions {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

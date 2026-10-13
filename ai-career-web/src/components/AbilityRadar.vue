@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  background: linear-gradient(90deg, #5969ec, #4c5cf1);
 }
 
 .chart-empty {

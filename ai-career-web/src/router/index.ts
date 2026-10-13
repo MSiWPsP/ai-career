@@ -21,7 +21,7 @@ const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: () => import('../views/dashboard/index.vue'),
-          meta: { title: '首页' },
+          meta: { title: '成长首页' },
         },
         {
           path: 'profile',

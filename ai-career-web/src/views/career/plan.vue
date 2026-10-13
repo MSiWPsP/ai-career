@@ -154,7 +154,8 @@ async function generateFirstPlan() {
 </template>
 
 <style scoped>
-.plan-actions { display: flex; gap: 10px; }
+.plan-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.plan-actions .el-button { margin-left: 0; }
 .load-alert { margin-bottom: 20px; }
 .plan-hero {
   position: relative;
@@ -166,7 +167,7 @@ async function generateFirstPlan() {
   padding: 30px 36px;
   background:
     radial-gradient(circle at 84% 20%, rgb(103 232 249 / 28%), transparent 34%),
-    linear-gradient(120deg, #102f68, #1d4ed8 60%, #2686e7);
+    linear-gradient(120deg, #5361d8, #4c5cf1 60%, #8094f5);
   color: #fff;
   box-shadow: 0 20px 44px rgb(29 78 216 / 18%);
 }
@@ -178,7 +179,7 @@ async function generateFirstPlan() {
 .plan-hero h2 { margin: 18px 0 10px; color: #fff; font-size: 28px; }
 .plan-hero p { margin: 0 0 18px; color: #dbeafe; line-height: 1.8; }
 .plan-hero small { color: #bfdbfe; }
-.plan-hero .soft-label { border: 1px solid rgb(255 255 255 / 20%); color: #e0f2fe; background: var(--surface); }
+.plan-hero .soft-label { border: 1px solid rgb(255 255 255 / 20%); color: #e0f2fe; background: rgb(255 255 255 / 12%); }
 .match-score { min-width: 160px; text-align: center; }
 .match-score span { display: block; margin-top: -15px; color: #dbeafe; font-size: 12px; }
 .match-score :deep(.el-progress-circle__track) { stroke: rgb(255 255 255 / 18%); }
@@ -204,7 +205,7 @@ async function generateFirstPlan() {
 .muted-copy { color: var(--muted); font-size: 13px; }
 .roadmap-card,
 .history-card { position: relative; overflow: hidden; padding: 25px 28px; box-shadow: 0 14px 34px rgb(23 49 92 / 8%); }
-.roadmap-card::before { position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, #2563eb, #38bdf8 62%, transparent); content: ''; }
+.roadmap-card::before { position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, #5969ec, #a3b0fa 62%, transparent); content: ''; }
 .history-card { margin-top: 20px; }
 .version-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .version-list button {
@@ -216,12 +217,12 @@ async function generateFirstPlan() {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: var(--surface);
+  background: #fff;
   cursor: pointer;
   text-align: left;
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
-.version-list button:hover { border-color: var(--line); box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateY(-3px); }
+.version-list button:hover { border-color: #a8c6f0; box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateY(-3px); }
 .version-list button.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px rgba(29, 78, 216, .08); }
 .version-list span { grid-row: 1 / 3; color: var(--primary); font-size: 17px; font-weight: 800; }
 .version-list strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

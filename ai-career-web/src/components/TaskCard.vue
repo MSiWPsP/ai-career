@@ -56,15 +56,15 @@ const priority = computed(() => {
   gap: 14px;
   margin-bottom: 10px;
   padding: 16px;
-  border: 1px solid var(--line);
+  border: 1px solid #dbe6f3;
   border-radius: 11px;
-  background: linear-gradient(145deg, var(--surface), var(--surface-subtle));
+  background: linear-gradient(145deg, #fff, #f8fbff);
   box-shadow: 0 6px 18px rgb(23 49 92 / 4%);
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
 
 .task-card:hover {
-  border-color: var(--line);
+  border-color: #a8c7f1;
   box-shadow: 0 13px 28px rgb(29 78 216 / 10%);
   transform: translateX(4px);
 }
@@ -83,10 +83,10 @@ const priority = computed(() => {
   flex: 0 0 22px;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--line);
+  border: 2px solid #c4d1df;
   border-radius: 7px;
   color: #fff;
-  background: var(--surface);
+  background: #fff;
   font: inherit;
   line-height: 1;
   appearance: none;
@@ -105,7 +105,7 @@ const priority = computed(() => {
   background: var(--success);
 }
 
-.task-card.completed { background: linear-gradient(145deg, var(--surface-subtle), var(--surface-subtle)); }
+.task-card.completed { background: linear-gradient(145deg, #f8fffc, #f2fbf7); }
 
 .task-title-row {
   display: flex;
