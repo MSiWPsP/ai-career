@@ -38,6 +38,7 @@ import { getSkills } from '../../api/skill'
 import AgentAvatar from '../../components/AgentAvatar.vue'
 import { useCareerChatStore } from '../../stores/careerChat'
 import type { CareerChatPhase, CareerChatSession, CareerPlan, UserProfile, UserSkill } from '../../types/api'
+import { createClientMessageId } from '../../utils/id'
 import { renderMarkdown } from '../../utils/markdown'
 
 const router = useRouter()
@@ -231,7 +232,7 @@ async function send(content = message.value, retryClientMessageId?: string) {
   } catch {
     return
   }
-  const clientMessageId = retryClientMessageId || crypto.randomUUID()
+  const clientMessageId = retryClientMessageId || createClientMessageId()
   processingPhase.value = null
   ragStepVisible.value = false
   careerChatStore.startSending(question, clientMessageId)
