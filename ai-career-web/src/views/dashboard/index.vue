@@ -128,7 +128,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
     <header class="dashboard-heading">
       <div>
         <h1>{{ greeting }}，{{ user?.nickname || '同学' }}</h1>
-        <p>围绕当前职业目标，稳步推进每一项成长行动。</p>
+        <p>看清方向，找到下一步。你的职业成长，从这里继续。</p>
       </div>
       <el-button plain @click="router.push('/career/plan')">查看成长计划 <el-icon class="el-icon--right"><ArrowRight /></el-icon></el-button>
     </header>
@@ -312,27 +312,14 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.75fr);
   overflow: hidden;
   margin-bottom: 14px;
-  border-color: #2563eb;
+  border-color: var(--primary);
   color: #fff;
-  background:
-    radial-gradient(circle at 70% 18%, rgb(103 232 249 / 22%) 0 2px, transparent 3px),
-    linear-gradient(120deg, #123b82 0%, #1d4ed8 55%, #287ee9 100%);
-  background-size: 34px 34px, auto;
+  background: radial-gradient(ellipse at 80% 0%, rgb(56 189 248 / 14%), transparent 65%), linear-gradient(115deg, #142b49, #10213a);
+  background-size: auto;
   box-shadow: 0 18px 40px rgb(29 78 216 / 18%);
 }
 
-.goal-feature::after {
-  position: absolute;
-  top: -92px;
-  right: 22%;
-  width: 260px;
-  height: 260px;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 50%;
-  box-shadow: 0 0 0 36px rgb(255 255 255 / 5%), 0 0 0 78px rgb(255 255 255 / 3%);
-  content: '';
-  pointer-events: none;
-}
+.goal-feature::after { display: none; }
 
 .goal-feature-main,
 .goal-feature-next { position: relative; z-index: 1; min-width: 0; padding: 24px 27px; }
@@ -341,7 +328,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .goal-feature-next { display: flex; flex-direction: column; align-items: flex-start; border-left: 1px solid rgb(255 255 255 / 20%); background: rgb(8 39 96 / 18%); backdrop-filter: blur(8px); }
 .goal-feature-next strong { margin: 9px 0 5px; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
 .goal-feature-next small { margin-bottom: 16px; color: #dbeafe; font-size: 12px; line-height: 1.5; }
-.goal-feature-next .el-button { margin-top: auto; border-color: #fff; border-radius: 7px; color: #1746a2; background: #fff; }
+.goal-feature-next .el-button { margin-top: auto; border-color: #fff; border-radius: 7px; color: var(--primary); background: var(--surface); }
 .goal-feature .section-label { color: #bfdbfe; }
 .goal-feature .text-link { color: #fff; }
 .section-label { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
@@ -380,7 +367,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   padding: 17px 18px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 5px 18px rgb(23 49 92 / 5%);
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
@@ -398,7 +385,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 }
 
 .metric-card:hover {
-  border-color: #b6cff5;
+  border-color: var(--line);
   box-shadow: 0 16px 34px rgb(29 78 216 / 12%);
   transform: translateY(-4px);
 }
@@ -414,7 +401,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   place-items: center;
   border-radius: 7px;
   color: var(--primary);
-  background: linear-gradient(145deg, #eff6ff, #dbeafe);
+  background: linear-gradient(145deg, var(--primary-soft), #1b3452);
   font-size: 18px;
   box-shadow: inset 0 0 0 1px rgb(147 197 253 / 24%);
   transition: transform var(--motion-normal) var(--ease-standard);
@@ -445,12 +432,12 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .roadmap-panel {
   position: relative;
   display: flex;
-  min-height: 470px;
+  min-height: 360px;
   flex-direction: column;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgb(239 246 255 / 70%), transparent 36%),
-    #fff;
+    linear-gradient(180deg, var(--surface-subtle), transparent 36%),
+    var(--surface);
 }
 
 .roadmap-panel::before {
@@ -461,7 +448,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   content: '';
 }
 
-.tasks-panel { min-height: 470px; }
+.tasks-panel { min-height: 360px; }
 
 .dashboard-tasks :deep(.task-card) { grid-template-columns: 22px 1fr; padding: 13px 12px; }
 .dashboard-tasks :deep(.task-card > .el-button),
@@ -488,11 +475,11 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   gap: 15px;
   margin: 22px 0;
   padding: 17px 20px;
-  border: 1px solid #cadcf5;
+  border: 1px solid var(--line);
   border-radius: 10px;
   color: var(--text);
   overflow: hidden;
-  background: linear-gradient(100deg, #eff6ff, #f8fbff 62%, #e7f4ff);
+  background: linear-gradient(100deg, var(--primary-soft), var(--surface-subtle) 62%, var(--surface-subtle));
   box-shadow: 0 8px 22px rgb(29 78 216 / 7%);
   transition: box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
@@ -506,22 +493,20 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   place-items: center;
   border-radius: 7px;
   color: var(--primary);
-  background: #fff;
+  background: var(--surface);
   font-size: 19px;
 }
 
 .advice-card p { margin: 0 0 4px; color: var(--primary-dark); font-size: 12px; font-weight: 700; }
 .advice-card strong { font-size: 13px; font-weight: 500; line-height: 1.65; }
-.advice-card button { padding: 9px 13px; border: 1px solid #bad0ef; border-radius: 7px; background: #fff; white-space: nowrap; }
+.advice-card button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); white-space: nowrap; }
 
 .recent-panel {
   position: relative;
   overflow: hidden;
-  border-color: #2563eb;
+  border-color: var(--primary);
   color: #fff;
-  background:
-    radial-gradient(circle at 100% 100%, rgb(56 189 248 / 26%), transparent 52%),
-    linear-gradient(145deg, #102f68, #1951b3 62%, #2378d8);
+  background: linear-gradient(145deg, #13263f, #102038);
   box-shadow: 0 16px 38px rgb(23 70 154 / 17%);
 }
 
@@ -556,7 +541,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   position: absolute;
   inset: 7px;
   border-radius: inherit;
-  background: #123979;
+  background: var(--surface);
   content: '';
 }
 
@@ -567,9 +552,9 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .interview-summary { position: relative; z-index: 2; }
 .interview-summary h3 { margin: 10px 0 6px; font-size: 16px; }
 .interview-summary p { margin: 0; color: #bfdbfe; font-size: 12px; }
-.recent-panel .soft-label { border-color: rgb(255 255 255 / 18%); color: #dbeafe; background: rgb(255 255 255 / 12%); }
-.recent-panel .el-button { position: relative; z-index: 2; border-color: rgb(255 255 255 / 70%); color: #fff; background: rgb(255 255 255 / 10%); backdrop-filter: blur(6px); }
-.recent-panel .el-button:hover { border-color: #fff; color: #1746a2; background: #fff; }
+.recent-panel .soft-label { border-color: rgb(255 255 255 / 18%); color: #dbeafe; background: var(--surface); }
+.recent-panel .el-button { position: relative; z-index: 2; border-color: rgb(255 255 255 / 70%); color: #fff; background: var(--surface); backdrop-filter: blur(6px); }
+.recent-panel .el-button:hover { border-color: #fff; color: var(--primary); background: var(--surface); }
 
 .interview-watermark {
   position: absolute;
@@ -592,13 +577,13 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   overflow: hidden;
   background:
     radial-gradient(circle at 12% 110%, rgb(59 130 246 / 14%), transparent 42%),
-    linear-gradient(135deg, #fff 0%, #f8fbff 100%);
+    linear-gradient(135deg, var(--surface) 0%, var(--surface-subtle) 100%);
   box-shadow: 0 12px 34px rgb(23 49 92 / 8%);
 }
 
 .ability-header-actions { display: flex; align-items: center; gap: 15px; }
-.ability-live { display: inline-flex; align-items: center; gap: 6px; color: #14765f; font-size: 11px; font-weight: 700; }
-.ability-live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 5px rgb(34 197 94 / 10%); animation: live-pulse 2s ease-in-out infinite; }
+.ability-live { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-size: 11px; font-weight: 700; }
+.ability-live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 5px rgb(34 197 94 / 10%);  }
 
 @keyframes live-pulse {
   50% { box-shadow: 0 0 0 9px rgb(34 197 94 / 0%); }
@@ -623,9 +608,9 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .ability-average,
 .ability-insight {
   padding: 14px;
-  border: 1px solid #dbe7f5;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgb(255 255 255 / 76%);
+  background: var(--surface);
   box-shadow: 0 7px 18px rgb(23 49 92 / 5%);
 }
 
@@ -633,7 +618,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .ability-insight > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
 .ability-average strong { color: var(--primary-dark); font-size: 25px; }
 .ability-average strong small { margin-left: 2px; font-size: 11px; }
-.ability-average > i { display: block; height: 4px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #dbeafe; }
+.ability-average > i { display: block; height: 4px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #1b3452; }
 .ability-average > i b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2563eb, #38bdf8); }
 .ability-insight { position: relative; overflow: hidden; padding-left: 18px; }
 .ability-insight::before { position: absolute; inset: 0 auto 0 0; width: 4px; background: #38bdf8; content: ''; }
@@ -644,7 +629,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 .mini-roadmap {
   display: flex;
   width: 100%;
-  min-height: 355px;
+  min-height: 260px;
   flex: 1;
   flex-direction: column;
   gap: 9px;
@@ -659,15 +644,15 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   gap: 14px;
   min-width: 0;
   padding: 13px 14px 13px 12px;
-  border: 1px solid #dce8f7;
+  border: 1px solid var(--line);
   border-radius: 11px;
   text-align: left;
-  background: rgb(255 255 255 / 86%);
+  background: var(--surface);
   box-shadow: 0 6px 16px rgb(23 49 92 / 4%);
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
 
-.mini-stage:hover { border-color: #9fc4f4; box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateX(5px); }
+.mini-stage:hover { border-color: var(--line); box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateX(5px); }
 
 .mini-stage:not(:last-child)::after {
   position: absolute;
@@ -676,7 +661,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
   height: 12px;
   top: calc(100% + 1px);
   left: 29px;
-  background: linear-gradient(#60a5fa, #bfdbfe);
+  background: linear-gradient(#60a5fa, var(--surface-subtle));
   content: '';
 }
 
@@ -712,7 +697,7 @@ async function changeTaskStatus(task: CareerTask, status: number) {
 }
 .mini-stage p { display: -webkit-box; margin: 6px 0 0; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .mini-stage-topics { display: flex; gap: 5px; margin-top: 8px; overflow: hidden; }
-.mini-stage-topics span { overflow: hidden; padding: 3px 7px; border-radius: 5px; color: #1d4ed8; background: #eff6ff; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mini-stage-topics span { overflow: hidden; padding: 3px 7px; border-radius: 5px; color: var(--primary); background: var(--primary-soft); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .compact { min-height: 145px; padding: 12px; font-size: 12px; }
 .compact .empty-icon { width: 44px; height: 44px; }
 

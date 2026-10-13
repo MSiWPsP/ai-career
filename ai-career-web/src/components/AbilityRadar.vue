@@ -6,6 +6,7 @@ import { LegendComponent, RadarComponent, TooltipComponent } from 'echarts/compo
 import { init, use, type ECharts, type EChartsCoreOption } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { AbilityRadar } from '../types/api'
+import { getChartTheme } from '../utils/chartTheme'
 
 use([RadarChart, RadarComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
@@ -38,17 +39,18 @@ const useCompactBars = computed(() => compactAbilities.value.length > 0 && compa
 function render() {
   if (!chartRef.value || props.data.indicators.length === 0) return
   chart ||= init(chartRef.value)
+  const theme = getChartTheme()
   const option: EChartsCoreOption = {
-    color: ['#1d4ed8'],
-    tooltip: {},
+    color: [theme.primary],
+    tooltip: { backgroundColor: theme.surface, borderColor: theme.line, textStyle: { color: theme.text } },
     radar: {
       radius: '66%',
       splitNumber: 4,
       indicator: props.data.indicators,
-      axisName: { color: '#5c6b7b', fontSize: 12 },
-      splitArea: { areaStyle: { color: ['#ffffff', '#f5f8fc'] } },
-      splitLine: { lineStyle: { color: '#dce5ef' } },
-      axisLine: { lineStyle: { color: '#dce5ef' } },
+      axisName: { color: theme.muted, fontSize: 12 },
+      splitArea: { areaStyle: { color: [theme.surface, theme.subtle] } },
+      splitLine: { lineStyle: { color: theme.line } },
+      axisLine: { lineStyle: { color: theme.line } },
     },
     series: [
       {
@@ -56,7 +58,7 @@ function render() {
         data: [{ name: props.name, value: props.data.values }],
         symbolSize: 6,
         lineStyle: { width: 2.5 },
-        areaStyle: { color: 'rgba(29, 78, 216, 0.16)' },
+        areaStyle: { color: theme.primary, opacity: 0.18 },
       },
     ],
   }
@@ -181,7 +183,7 @@ onBeforeUnmount(() => {
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e8eef7;
+  background: var(--line);
 }
 
 .compact-track span {

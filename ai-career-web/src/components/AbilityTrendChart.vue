@@ -6,6 +6,7 @@ import { GridComponent, TooltipComponent } from 'echarts/components'
 import { init, use, type ECharts, type EChartsCoreOption } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { AbilityTrend } from '../types/api'
+import { getChartTheme } from '../utils/chartTheme'
 
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 
@@ -18,24 +19,25 @@ let resizeFrame: number | undefined
 function render() {
   if (!chartRef.value || !props.data.records.length) return
   chart ||= init(chartRef.value)
+  const theme = getChartTheme()
   const option: EChartsCoreOption = {
-    color: ['#1d4ed8'],
-    tooltip: { trigger: 'axis' },
+    color: [theme.primary],
+    tooltip: { trigger: 'axis', backgroundColor: theme.surface, borderColor: theme.line, textStyle: { color: theme.text } },
     grid: { left: 38, right: 18, top: 25, bottom: 35 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
       data: props.data.records.map((item) => item.date),
-      axisLine: { lineStyle: { color: '#dce5ef' } },
+      axisLine: { lineStyle: { color: theme.line } },
       axisTick: { show: false },
-      axisLabel: { color: '#5c6b7b', fontSize: 10 },
+      axisLabel: { color: theme.muted, fontSize: 11 },
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 100,
-      splitLine: { lineStyle: { color: '#e5edf6', type: 'dashed' } },
-      axisLabel: { color: '#5c6b7b', fontSize: 10 },
+      splitLine: { lineStyle: { color: theme.line, type: 'dashed' } },
+      axisLabel: { color: theme.muted, fontSize: 11 },
     },
     series: [
       {

@@ -64,20 +64,20 @@ defineProps<{ stages: RoadmapStage[] }>()
   width: 2px;
   min-height: 78px;
   flex: 1;
-  background: linear-gradient(#60a5fa, #dbeafe);
+  background: linear-gradient(#60a5fa, #1b3452);
 }
 
 .stage-content {
   margin-bottom: 14px;
   padding: 16px 18px;
-  border: 1px solid #d9e6f5;
+  border: 1px solid var(--line);
   border-radius: 11px;
-  background: linear-gradient(145deg, #fff, #f7fbff);
+  background: linear-gradient(145deg, var(--surface), var(--surface-subtle));
   box-shadow: 0 7px 20px rgb(23 49 92 / 5%);
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
 
-.stage-content:hover { border-color: #9fc3f2; box-shadow: 0 15px 30px rgb(29 78 216 / 11%); transform: translateX(5px); }
+.stage-content:hover { border-color: var(--line); box-shadow: 0 15px 30px rgb(29 78 216 / 11%); transform: translateX(5px); }
 
 .stage-top {
   display: flex;
@@ -113,7 +113,7 @@ defineProps<{ stages: RoadmapStage[] }>()
 .stage-topics span {
   padding: 5px 9px;
   border-radius: 7px;
-  border: 1px solid #dfe8f3;
+  border: 1px solid var(--line);
   color: var(--primary);
   background: var(--primary-soft);
   font-size: 11px;

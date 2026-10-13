@@ -178,7 +178,7 @@ async function generateFirstPlan() {
 .plan-hero h2 { margin: 18px 0 10px; color: #fff; font-size: 28px; }
 .plan-hero p { margin: 0 0 18px; color: #dbeafe; line-height: 1.8; }
 .plan-hero small { color: #bfdbfe; }
-.plan-hero .soft-label { border: 1px solid rgb(255 255 255 / 20%); color: #e0f2fe; background: rgb(255 255 255 / 12%); }
+.plan-hero .soft-label { border: 1px solid rgb(255 255 255 / 20%); color: #e0f2fe; background: var(--surface); }
 .match-score { min-width: 160px; text-align: center; }
 .match-score span { display: block; margin-top: -15px; color: #dbeafe; font-size: 12px; }
 .match-score :deep(.el-progress-circle__track) { stroke: rgb(255 255 255 / 18%); }
@@ -216,12 +216,12 @@ async function generateFirstPlan() {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   text-align: left;
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-normal) ease, transform var(--motion-normal) var(--ease-standard);
 }
-.version-list button:hover { border-color: #a8c6f0; box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateY(-3px); }
+.version-list button:hover { border-color: var(--line); box-shadow: 0 12px 24px rgb(29 78 216 / 10%); transform: translateY(-3px); }
 .version-list button.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px rgba(29, 78, 216, .08); }
 .version-list span { grid-row: 1 / 3; color: var(--primary); font-size: 17px; font-weight: 800; }
 .version-list strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
