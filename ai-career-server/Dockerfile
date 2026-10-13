@@ -10,7 +10,7 @@ ENV MAVEN_OPTS=${MAVEN_OPTS}
 
 COPY ai-career-server/pom.xml ./pom.xml
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -ntp dependency:go-offline
+    mvn -B -ntp -DskipTests dependency:resolve
 
 COPY ai-career-server/src ./src
 RUN --mount=type=cache,target=/root/.m2 \
@@ -61,4 +61,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=10 \
   CMD curl --fail --silent --show-error http://127.0.0.1:8080/actuator/health >/dev/null || exit 1
 
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-jar", "/app/application.jar"]
