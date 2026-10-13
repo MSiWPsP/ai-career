@@ -1,0 +1,80 @@
+{"id":"R001","scenario":"knowledge","question":"Java 后端工程师入门需要哪些核心能力？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
+{"id":"R002","scenario":"knowledge","question":"Java 集合、异常和泛型应该学到什么程度？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
+{"id":"R003","scenario":"knowledge","question":"准备后端面试时并发写入与慢请求要怎么解释？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
+{"id":"R004","scenario":"knowledge","question":"后端开发为什么还要理解网络请求链路和操作系统线程？","expectedDocument":"java-backend-capabilities","expectedSection":"语言与计算机基础","retrieve":true}
+{"id":"R005","scenario":"knowledge","question":"Spring Boot 接口开发应包含哪些校验和分层？","expectedDocument":"java-backend-capabilities","expectedSection":"服务开发","retrieve":true}
+{"id":"R006","scenario":"knowledge","question":"学习数据库时 SQL、索引、事务和执行计划各有什么用？","expectedDocument":"java-backend-capabilities","expectedSection":"数据库基础","retrieve":true}
+{"id":"R007","scenario":"knowledge","question":"在后端项目中什么时候用 Redis，缓存失效后怎么办？","expectedDocument":"java-backend-capabilities","expectedSection":"缓存取舍","retrieve":true}
+{"id":"R008","scenario":"knowledge","question":"怎样证明自己可以独立交付一个 Java 后端服务？","expectedDocument":"java-backend-capabilities","expectedSection":"工程与交付","retrieve":true}
+{"id":"R009","scenario":"knowledge","question":"后端项目的日志、接口文档、迁移和部署说明为什么重要？","expectedDocument":"java-backend-capabilities","expectedSection":"工程与交付","retrieve":true}
+{"id":"R010","scenario":"knowledge","question":"用于求职的 Spring Boot 项目最少要展示哪些工程要素？","expectedDocument":"java-backend-capabilities","expectedSection":"Spring Boot 项目工程要素","retrieve":true}
+{"id":"R011","scenario":"knowledge","question":"后端项目的鉴权边界、超时和幂等需要怎样说明？","expectedDocument":"java-backend-capabilities","expectedSection":"Spring Boot 项目工程要素","retrieve":true}
+{"id":"R012","scenario":"knowledge","question":"如何用岗位描述和项目证据评估自己的 Java 后端差距？","expectedDocument":"java-backend-capabilities","expectedSection":"评估差距的方法","retrieve":true}
+{"id":"R013","scenario":"knowledge","question":"零基础想学 Java 后端，第一阶段先做什么？","expectedDocument":"backend-learning-path","expectedSection":"阶段一：建立可运行的基础","retrieve":true}
+{"id":"R014","scenario":"knowledge","question":"Java 集合和单元测试学完后应该留下什么练习证据？","expectedDocument":"backend-learning-path","expectedSection":"阶段一：建立可运行的基础","retrieve":true}
+{"id":"R015","scenario":"knowledge","question":"学习后端前期 SQL 增删改查和关联查询要怎么练？","expectedDocument":"backend-learning-path","expectedSection":"阶段一：建立可运行的基础","retrieve":true}
+{"id":"R016","scenario":"knowledge","question":"基础薄弱时应该先补数据库还是直接堆 Redis 中间件？","expectedDocument":"backend-learning-path","expectedSection":"阶段一：建立可运行的基础","retrieve":true}
+{"id":"R017","scenario":"knowledge","question":"第一次做 Spring Boot 项目怎样选一个闭环服务？","expectedDocument":"backend-learning-path","expectedSection":"阶段二：完成一个闭环服务","retrieve":true}
+{"id":"R018","scenario":"knowledge","question":"后端学习项目何时加入鉴权、参数校验和迁移脚本？","expectedDocument":"backend-learning-path","expectedSection":"阶段二：完成一个闭环服务","retrieve":true}
+{"id":"R019","scenario":"knowledge","question":"分页、缓存和异步任务应该在项目哪个阶段加入？","expectedDocument":"backend-learning-path","expectedSection":"阶段二：完成一个闭环服务","retrieve":true}
+{"id":"R020","scenario":"knowledge","question":"项目出现慢查询时应该按什么步骤排查和复测？","expectedDocument":"backend-learning-path","expectedSection":"阶段三：补足工程化与故障定位","retrieve":true}
+{"id":"R021","scenario":"knowledge","question":"一个可交付的后端项目还需要哪些配置和部署材料？","expectedDocument":"backend-learning-path","expectedSection":"阶段三：补足工程化与故障定位","retrieve":true}
+{"id":"R022","scenario":"knowledge","question":"学习后端时如何证明自己能处理数据一致性边界？","expectedDocument":"backend-learning-path","expectedSection":"阶段三：补足工程化与故障定位","retrieve":true}
+{"id":"R023","scenario":"knowledge","question":"找后端实习前应该准备几个有深度的项目案例？","expectedDocument":"backend-learning-path","expectedSection":"阶段四：面向求职整理证据","retrieve":true}
+{"id":"R024","scenario":"knowledge","question":"后端学习路线能否保证固定几周后拿到实习？","expectedDocument":"backend-learning-path","expectedSection":"阶段四：面向求职整理证据","retrieve":true}
+{"id":"R025","scenario":"knowledge","question":"找实习前如何确定岗位、城市和可到岗时间？","expectedDocument":"internship-preparation","expectedSection":"先明确目标与约束","retrieve":true}
+{"id":"R026","scenario":"knowledge","question":"职业方向还没定，实习准备可以先比较几个候选方向吗？","expectedDocument":"internship-preparation","expectedSection":"先明确目标与约束","retrieve":true}
+{"id":"R027","scenario":"knowledge","question":"实习简历的项目描述应该按什么顺序写？","expectedDocument":"internship-preparation","expectedSection":"准备可验证材料","retrieve":true}
+{"id":"R028","scenario":"knowledge","question":"没有测量过性能提升，简历可以写提升百分比吗？","expectedDocument":"internship-preparation","expectedSection":"准备可验证材料","retrieve":true}
+{"id":"R029","scenario":"knowledge","question":"投实习时展示代码仓库和演示环境要注意什么？","expectedDocument":"internship-preparation","expectedSection":"准备可验证材料","retrieve":true}
+{"id":"R030","scenario":"knowledge","question":"校招投递后应该记录哪些岗位反馈？","expectedDocument":"internship-preparation","expectedSection":"建立投递与复盘节奏","retrieve":true}
+{"id":"R031","scenario":"knowledge","question":"投递简历没有回复一定代表我技术不够吗？","expectedDocument":"internship-preparation","expectedSection":"建立投递与复盘节奏","retrieve":true}
+{"id":"R032","scenario":"knowledge","question":"多次面试反馈类似问题时应如何调整准备节奏？","expectedDocument":"internship-preparation","expectedSection":"建立投递与复盘节奏","retrieve":true}
+{"id":"R033","scenario":"knowledge","question":"技术面试怎样解释设计依据、边界和失败处理？","expectedDocument":"internship-preparation","expectedSection":"面试准备","retrieve":true}
+{"id":"R034","scenario":"knowledge","question":"面试遇到不会的问题应该装懂还是先澄清需求？","expectedDocument":"internship-preparation","expectedSection":"面试准备","retrieve":true}
+{"id":"R035","scenario":"knowledge","question":"行为面试应该准备哪些真实协作与冲突案例？","expectedDocument":"internship-preparation","expectedSection":"面试准备","retrieve":true}
+{"id":"R036","scenario":"knowledge","question":"不同公司的面试流程是否都可以套同一套建议？","expectedDocument":"internship-preparation","expectedSection":"面试准备","retrieve":true}
+{"id":"R037","scenario":"knowledge","question":"大学生做项目时如何控制范围，先定义核心闭环？","expectedDocument":"project-evidence","expectedSection":"选择项目范围","retrieve":true}
+{"id":"R038","scenario":"knowledge","question":"为了展示能力，项目必须引入所有流行中间件吗？","expectedDocument":"project-evidence","expectedSection":"选择项目范围","retrieve":true}
+{"id":"R039","scenario":"knowledge","question":"项目启动前怎样定义用户问题、角色和成功条件？","expectedDocument":"project-evidence","expectedSection":"选择项目范围","retrieve":true}
+{"id":"R040","scenario":"knowledge","question":"功能少但能稳定演示的项目有展示价值吗？","expectedDocument":"project-evidence","expectedSection":"选择项目范围","retrieve":true}
+{"id":"R041","scenario":"knowledge","question":"除了代码，哪些提交记录和测试材料能证明项目能力？","expectedDocument":"project-evidence","expectedSection":"保留工程证据","retrieve":true}
+{"id":"R042","scenario":"knowledge","question":"写项目性能提升数字前需要保存哪些基线和对照？","expectedDocument":"project-evidence","expectedSection":"保留工程证据","retrieve":true}
+{"id":"R043","scenario":"knowledge","question":"没有性能数据时怎样诚实描述项目改进？","expectedDocument":"project-evidence","expectedSection":"保留工程证据","retrieve":true}
+{"id":"R044","scenario":"knowledge","question":"如何讲清选择数据模型、鉴权方式和缓存策略的取舍？","expectedDocument":"project-evidence","expectedSection":"展示设计取舍","retrieve":true}
+{"id":"R045","scenario":"knowledge","question":"团队项目简历里怎样区分个人贡献和团队成果？","expectedDocument":"project-evidence","expectedSection":"展示设计取舍","retrieve":true}
+{"id":"R046","scenario":"knowledge","question":"项目方案复盘可以按哪五个要素组织？","expectedDocument":"project-evidence","expectedSection":"展示设计取舍","retrieve":true}
+{"id":"R047","scenario":"knowledge","question":"每次项目迭代应该聚焦怎样的可检验改进？","expectedDocument":"project-evidence","expectedSection":"复盘和迭代","retrieve":true}
+{"id":"R048","scenario":"knowledge","question":"项目尚未实现的功能和安全运维限制要不要说明？","expectedDocument":"project-evidence","expectedSection":"复盘和迭代","retrieve":true}
+{"id":"R049","scenario":"knowledge","question":"选择职业方向时如何同时考虑兴趣、能力和机会？","expectedDocument":"career-decision","expectedSection":"区分兴趣、能力与机会","retrieve":true}
+{"id":"R050","scenario":"knowledge","question":"一次职业测评能直接决定我未来的方向吗？","expectedDocument":"career-decision","expectedSection":"区分兴趣、能力与机会","retrieve":true}
+{"id":"R051","scenario":"knowledge","question":"个人生活约束与实习机会怎样影响职业选择？","expectedDocument":"career-decision","expectedSection":"区分兴趣、能力与机会","retrieve":true}
+{"id":"R052","scenario":"knowledge","question":"怎样用两到四周的小试验验证职业方向？","expectedDocument":"career-decision","expectedSection":"低成本验证方向","retrieve":true}
+{"id":"R053","scenario":"knowledge","question":"比较两个职业方向时应该使用哪些相同维度？","expectedDocument":"career-decision","expectedSection":"低成本验证方向","retrieve":true}
+{"id":"R054","scenario":"knowledge","question":"职业探索时为什么要读真实岗位要求并和从业者交流？","expectedDocument":"career-decision","expectedSection":"低成本验证方向","retrieve":true}
+{"id":"R055","scenario":"knowledge","question":"在前端和后端之间犹豫，可以用同一产品做哪些对比任务？","expectedDocument":"career-decision","expectedSection":"前端与后端方向比较示例","retrieve":true}
+{"id":"R056","scenario":"knowledge","question":"前端偏用户体验，后端偏数据建模，我该怎么比较投入感？","expectedDocument":"career-decision","expectedSection":"前端与后端方向比较示例","retrieve":true}
+{"id":"R057","scenario":"knowledge","question":"前端是不是只做页面、后端是不是只写数据库？","expectedDocument":"career-decision","expectedSection":"前端与后端方向比较示例","retrieve":true}
+{"id":"R058","scenario":"knowledge","question":"确定阶段性职业方向后什么时候复盘和调整？","expectedDocument":"career-decision","expectedSection":"决策后的执行","retrieve":true}
+{"id":"R059","scenario":"knowledge","question":"转职业方向会让之前积累的通用能力归零吗？","expectedDocument":"career-decision","expectedSection":"决策后的执行","retrieve":true}
+{"id":"R060","scenario":"knowledge","question":"职业规划建议能保证录用结果或收入吗？","expectedDocument":"career-decision","expectedSection":"不确定性","retrieve":true}
+{"id":"R061","scenario":"greeting","question":"你好","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R062","scenario":"greeting","question":"早上好","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R063","scenario":"greeting","question":"谢谢","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R064","scenario":"greeting","question":"收到","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R065","scenario":"greeting","question":"再见","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R066","scenario":"personal_state","question":"我还有多少未完成任务？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R067","scenario":"personal_state","question":"我的任务完成率是多少？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R068","scenario":"conversation_memory","question":"总结我们刚刚的聊天","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R069","scenario":"conversation_memory","question":"刚才说了什么？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R070","scenario":"personal_state","question":"只根据我的职业画像说说当前目标","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R071","scenario":"out_of_scope","question":"现在几点？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R072","scenario":"out_of_scope","question":"今天星期几？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R073","scenario":"out_of_scope","question":"一加一等于几？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R074","scenario":"out_of_scope","question":"你是谁？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R075","scenario":"out_of_scope","question":"天气怎么样？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R076","scenario":"personal_state","question":"仅根据我的技能列表回答，不要查外部资料","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R077","scenario":"personal_state","question":"我还有多少任务待办？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R078","scenario":"conversation_memory","question":"总结一下刚才的对话","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R079","scenario":"personal_state","question":"我的任务状态有变化吗？","expectedDocument":null,"expectedSection":null,"retrieve":false}
+{"id":"R080","scenario":"conversation_control","question":"先别回答，我还在输入","expectedDocument":null,"expectedSection":null,"retrieve":false}

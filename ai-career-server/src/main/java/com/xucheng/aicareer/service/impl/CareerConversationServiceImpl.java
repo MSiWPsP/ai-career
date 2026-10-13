@@ -11,6 +11,7 @@ import com.xucheng.aicareer.service.CareerConversationService;
 import com.xucheng.aicareer.service.model.CareerChatMemoryEntry;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
 import com.xucheng.aicareer.service.model.KnowledgeRetrievalResult;
+import com.xucheng.aicareer.service.model.KnowledgeReference;
 import com.xucheng.aicareer.utils.UserContext;
 import com.xucheng.aicareer.vo.CareerChatMessageVO;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
@@ -18,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,9 +48,11 @@ public class CareerConversationServiceImpl implements CareerConversationService 
     private static final int TITLE_CODE_POINT_LIMIT = 30;
     private static final int LAST_MESSAGE_CODE_POINT_LIMIT = 100;
     private static final int PENDING_TIMEOUT_MINUTES = 3;
+    private static final TypeReference<List<KnowledgeReference>> REFERENCE_LIST_TYPE = new TypeReference<>() {};
 
     private final CareerChatSessionMapper sessionMapper;
     private final CareerChatMessageMapper messageMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -164,7 +169,8 @@ public class CareerConversationServiceImpl implements CareerConversationService 
         if (existingAssistant != null && existingAssistant.getStatus() == MESSAGE_COMPLETED) {
             // 已完成的请求直接携带历史答案返回，上层不会再次调用 Agent。
             return new CareerChatTurnContext(
-                    session.getId(), userId, session.getConversationId(), requestId, existingAssistant.getContent());
+                    session.getId(), userId, session.getConversationId(), requestId,
+                    existingAssistant.getContent(), readReferences(existingAssistant.getReferencesJson()));
         }
 
         if (existingUser == null) {
@@ -194,6 +200,13 @@ public class CareerConversationServiceImpl implements CareerConversationService 
     @Override
     @Transactional
     public void completeTurn(CareerChatTurnContext turn, String assistantContent) {
+        completeTurn(turn, assistantContent, List.of());
+    }
+
+    @Override
+    @Transactional
+    public void completeTurn(CareerChatTurnContext turn, String assistantContent,
+                             List<KnowledgeReference> references) {
         if (!StringUtils.hasText(assistantContent)) {
             throw new BusinessException(500, "AI回复内容为空");
         }
@@ -209,6 +222,7 @@ public class CareerConversationServiceImpl implements CareerConversationService 
             assistantMessage.setClientMessageId(turn.clientMessageId());
             assistantMessage.setRole(ROLE_ASSISTANT);
             assistantMessage.setContent(assistantContent.trim());
+            assistantMessage.setReferencesJson(objectMapper.writeValueAsString(references));
             assistantMessage.setStatus(MESSAGE_COMPLETED);
             assistantMessage.setMessageOrder(nextMessageOrder(turn.sessionId()));
             messageMapper.insert(assistantMessage);
@@ -356,9 +370,18 @@ public class CareerConversationServiceImpl implements CareerConversationService 
                 .clientMessageId(message.getClientMessageId())
                 .role(message.getRole())
                 .content(message.getContent())
+                .references(readReferences(message.getReferencesJson()))
                 .status(message.getStatus())
                 .messageOrder(message.getMessageOrder())
                 .createTime(message.getCreateTime())
                 .build();
+    }
+
+    private List<KnowledgeReference> readReferences(String json) {
+        if (json == null) {
+            // 旧文本尾注不是可验证的来源，历史接口不把它冒充为结构化引用。
+            return null;
+        }
+        return objectMapper.readValue(json, REFERENCE_LIST_TYPE);
     }
 }

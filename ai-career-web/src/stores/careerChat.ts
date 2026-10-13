@@ -2,7 +2,7 @@ import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type { CareerChatHistoryMessage, CareerKnowledgeReference } from '../types/api'
 import { useAuthStore } from './auth'
-import { splitCareerKnowledgeSources } from '../utils/rag'
+import { removeUntrustedCareerKnowledgeMarker, splitCareerKnowledgeSources } from '../utils/rag'
 
 export type CareerChatMessageStatus = 'sending' | 'completed' | 'failed'
 
@@ -12,6 +12,7 @@ export interface CareerChatMessage {
   role: 'assistant' | 'user'
   content: string
   references?: CareerKnowledgeReference[]
+  referencesVerified?: boolean
   ragAttempted?: boolean
   status: CareerChatMessageStatus
 }
@@ -118,9 +119,9 @@ export const useCareerChatStore = defineStore('careerChat', () => {
       (item) => item.role === 'assistant' && item.clientMessageId === clientMessageId,
     )
     if (assistant) {
-      const parsed = splitCareerKnowledgeSources(assistant.content)
-      assistant.content = parsed.body
-      assistant.references = references.length ? references : parsed.references
+      assistant.content = removeUntrustedCareerKnowledgeMarker(assistant.content)
+      assistant.references = references
+      assistant.referencesVerified = true
       assistant.ragAttempted ||= ragAttempted || assistant.references.length > 0
     }
     messages.value
@@ -189,8 +190,9 @@ function toDisplayMessage(message: CareerChatHistoryMessage): CareerChatMessage 
     clientMessageId: message.clientMessageId,
     role: message.role,
     content: parsed.body,
-    references: parsed.references,
-    ragAttempted: parsed.references.length > 0,
+    references: message.references ?? parsed.references,
+    referencesVerified: message.references !== null && message.references !== undefined,
+    ragAttempted: (message.references ?? parsed.references).length > 0,
     status: message.status === 1 ? 'completed' : 'failed',
   }
 }

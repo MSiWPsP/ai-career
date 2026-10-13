@@ -24,6 +24,7 @@ public class CareerChatMessage {
     private String clientMessageId;
     private String role;
     private String content;
+    private String referencesJson;
     private Integer status;
     private Integer messageOrder;
     private LocalDateTime createTime;

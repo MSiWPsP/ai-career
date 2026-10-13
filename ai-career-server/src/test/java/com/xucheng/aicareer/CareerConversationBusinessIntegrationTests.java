@@ -4,6 +4,7 @@ import com.xucheng.aicareer.dto.CareerChatSessionUpdateDTO;
 import com.xucheng.aicareer.exception.BusinessException;
 import com.xucheng.aicareer.service.CareerConversationService;
 import com.xucheng.aicareer.service.model.CareerChatTurnContext;
+import com.xucheng.aicareer.service.model.KnowledgeReference;
 import com.xucheng.aicareer.utils.UserContext;
 import com.xucheng.aicareer.vo.CareerChatSessionVO;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.test.context.TestConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -92,5 +94,24 @@ class CareerConversationBusinessIntegrationTests {
 
         conversationService.deleteConversation(session.getConversationId());
         assertThat(conversationService.getConversations(true)).isEmpty();
+    }
+
+    @Test
+    void referenceSnapshotSurvivesHistoryAndIdempotentReplay() {
+        long userId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        UserContext.setUserId(userId);
+        CareerChatSessionVO session = conversationService.createConversation();
+        String requestId = UUID.randomUUID().toString();
+        CareerChatTurnContext turn = conversationService.prepareTurn(
+                session.getConversationId(), requestId, "后端岗位需要哪些能力？");
+        KnowledgeReference reference = new KnowledgeReference("java-backend-capabilities",
+                "Java 后端岗位能力框架", "服务开发与数据", "AI职途项目知识库");
+        conversationService.completeTurn(turn, "先练习接口开发。", List.of(reference));
+
+        assertThat(conversationService.getMessages(session.getConversationId()).getLast().getReferences())
+                .containsExactly(reference);
+        CareerChatTurnContext replay = conversationService.prepareTurn(
+                session.getConversationId(), requestId, "后端岗位需要哪些能力？");
+        assertThat(replay.replayReferences()).containsExactly(reference);
     }
 }

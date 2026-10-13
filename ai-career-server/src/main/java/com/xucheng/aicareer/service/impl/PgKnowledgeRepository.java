@@ -18,6 +18,7 @@ import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 
 /**
@@ -31,22 +32,36 @@ public class PgKnowledgeRepository {
     private static final String TABLE = "ai_career_knowledge_chunk";
     private final DataSource dataSource;
     private final int dimension;
+    private final int queryTimeoutSeconds;
 
     public PgKnowledgeRepository(
             @Value("${ai.rag.jdbc-url}") String jdbcUrl,
             @Value("${ai.rag.username}") String username,
             @Value("${ai.rag.password}") String password,
-            @Value("${ai.rag.embedding-dimension:1024}") int dimension) {
+            @Value("${ai.rag.embedding-dimension:1024}") int dimension,
+            @Value("${ai.rag.pg-connect-timeout-seconds:3}") int connectTimeoutSeconds,
+            @Value("${ai.rag.pg-socket-timeout-seconds:5}") int socketTimeoutSeconds,
+            @Value("${ai.rag.pg-query-timeout-seconds:3}") int queryTimeoutSeconds) {
         if (dimension < 1 || dimension > 2000) {
             throw new IllegalArgumentException("RAG 向量维度必须在 1 到 2000 之间");
+        }
+        if (connectTimeoutSeconds < 1 || socketTimeoutSeconds < 1 || queryTimeoutSeconds < 1) {
+            throw new IllegalArgumentException("RAG PostgreSQL 超时必须大于零");
         }
         DriverManagerDataSource postgres = new DriverManagerDataSource();
         postgres.setDriverClassName("org.postgresql.Driver");
         postgres.setUrl(jdbcUrl);
         postgres.setUsername(username);
         postgres.setPassword(password);
+        // 仅约束知识库连接，不改动 MySQL 主数据源；查询超时后由 Service 降级为空依据。
+        Properties connectionProperties = new Properties();
+        connectionProperties.setProperty("connectTimeout", Integer.toString(connectTimeoutSeconds));
+        connectionProperties.setProperty("loginTimeout", Integer.toString(connectTimeoutSeconds));
+        connectionProperties.setProperty("socketTimeout", Integer.toString(socketTimeoutSeconds));
+        postgres.setConnectionProperties(connectionProperties);
         this.dataSource = postgres;
         this.dimension = dimension;
+        this.queryTimeoutSeconds = queryTimeoutSeconds;
     }
 
     /** 仅在显式导入时执行 DDL，普通请求不会修改数据库结构。 */
@@ -145,7 +160,7 @@ public class PgKnowledgeRepository {
     public List<KnowledgeHit> search(float[] queryVector, String targetPosition,
                                      String embeddingModel, int limit) {
         String sql = """
-                SELECT document_id, title, section_name, source_name, content,
+                SELECT document_id, document_version, chunk_index, title, section_name, source_name, content,
                        1 - (embedding <=> CAST(? AS vector)) AS score
                 FROM ai_career_knowledge_chunk
                 WHERE active = true AND expires_at >= CURRENT_DATE AND embedding_model = ?
@@ -156,6 +171,7 @@ public class PgKnowledgeRepository {
         String vector = vectorLiteral(queryVector);
         try (Connection connection = dataSource.getConnection();
              PreparedStatement query = connection.prepareStatement(sql)) {
+            query.setQueryTimeout(queryTimeoutSeconds);
             query.setString(1, vector);
             query.setString(2, embeddingModel);
             query.setString(3, targetPosition);
@@ -167,7 +183,8 @@ public class PgKnowledgeRepository {
                 while (rows.next()) {
                     hits.add(new KnowledgeHit(rows.getString("document_id"), rows.getString("title"),
                             rows.getString("section_name"), rows.getString("source_name"),
-                            rows.getString("content"), rows.getDouble("score")));
+                            rows.getString("content"), rows.getDouble("score"),
+                            rows.getInt("document_version"), rows.getInt("chunk_index")));
                 }
             }
             return hits;
@@ -212,6 +229,12 @@ public class PgKnowledgeRepository {
     }
 
     public record KnowledgeHit(String documentId, String title, String section,
-                               String sourceName, String content, double score) {
+                               String sourceName, String content, double score,
+                               Integer documentVersion, Integer chunkIndex) {
+
+        public KnowledgeHit(String documentId, String title, String section,
+                            String sourceName, String content, double score) {
+            this(documentId, title, section, sourceName, content, score, null, null);
+        }
     }
 }

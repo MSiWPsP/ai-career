@@ -1793,6 +1793,8 @@ career_plan新版本
 
 保存用户和 AI 的完整消息记录。`client_message_id` 是客户端生成的幂等标识，使用 `(session_id, client_message_id, role)` 唯一索引防止重试产生重复消息。
 
+`V7__add_career_chat_reference_snapshot.sql` 增加可空 `references_json`：新 AI 消息保存服务端本轮实际交给 Agent 的来源快照，`NULL` 表示迁移前旧消息未经结构化验证。该字段不改变聊天正文或消息状态语义。
+
 消息状态：
 
 ```text

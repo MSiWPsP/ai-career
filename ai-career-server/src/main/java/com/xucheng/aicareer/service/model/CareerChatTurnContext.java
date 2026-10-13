@@ -10,5 +10,11 @@ public record CareerChatTurnContext(
         Long userId,
         String conversationId,
         String clientMessageId,
-        String replayContent) {
+        String replayContent,
+        java.util.List<KnowledgeReference> replayReferences) {
+
+    public CareerChatTurnContext(Long sessionId, Long userId, String conversationId,
+                                 String clientMessageId, String replayContent) {
+        this(sessionId, userId, conversationId, clientMessageId, replayContent, java.util.List.of());
+    }
 }

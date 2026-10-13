@@ -104,6 +104,9 @@ export interface CareerKnowledgeReference {
   title: string
   section: string
   sourceName: string
+  documentVersion?: number | null
+  chunkIndex?: number | null
+  contentSha256?: string | null
 }
 
 export type CareerChatPhase = 'KNOWLEDGE_RETRIEVAL' | 'GENERATING'
@@ -135,6 +138,7 @@ export interface CareerChatHistoryMessage {
   clientMessageId: string
   role: 'assistant' | 'user'
   content: string
+  references?: CareerKnowledgeReference[] | null
   status: number
   messageOrder: number
   createTime?: string
