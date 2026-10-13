@@ -145,6 +145,8 @@ verify_runtime_images() {
     'test -z "$(find /app -xdev \( -name application-local.yml -o -name .env -o -name .git -o -name target -o -name node_modules -o -name dist \) -print -quit 2>/dev/null)"'
   docker run --rm --entrypoint sh "${web_image}" -c \
     'test -z "$(find /usr/share/nginx/html -xdev \( -name .env -o -name .git -o -name node_modules -o -name src \) -print -quit 2>/dev/null)"'
+  # 以镜像默认非 root 用户检查配置可读性与语法，在替换线上 Web 前发现权限问题。
+  docker run --rm --entrypoint nginx --add-host backend:127.0.0.1 "${web_image}" -t
 }
 
 record_stable_version() {

@@ -20,7 +20,8 @@ RUN apk add --no-cache tzdata && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo Asia/Shanghai > /etc/timezone
 
-COPY ai-career-web/nginx/default.conf /etc/nginx/conf.d/default.conf
+# 显式设置只读权限，避免受服务器严格 umask / 源码上传权限影响，导致非 root Nginx 无法读取配置。
+COPY --chmod=0644 ai-career-web/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=101:101 /workspace/dist/ /usr/share/nginx/html/
 
 USER 101:101
