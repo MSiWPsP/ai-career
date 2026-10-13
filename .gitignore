@@ -5,9 +5,11 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 application-local.yml
 **/node_modules/
 **/dist/
 **/.vite/
 **/.playwright-cli/
 **/output/playwright/
+.deploy/
