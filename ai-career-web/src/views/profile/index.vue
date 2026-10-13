@@ -11,26 +11,55 @@ interface SkillCatalogItem {
   category: string
 }
 
+const educationOptions = ['专科', '本科']
+const gradeOptions = ['大一', '大二', '大三', '大四']
+
 const skillCatalog: Record<string, SkillCatalogItem[]> = {
   编程语言: [
     { name: 'Java', category: 'PROGRAMMING' },
     { name: 'Python', category: 'PROGRAMMING' },
     { name: 'C', category: 'PROGRAMMING' },
+    { name: 'C++', category: 'PROGRAMMING' },
     { name: 'JavaScript', category: 'PROGRAMMING' },
+    { name: 'TypeScript', category: 'PROGRAMMING' },
+    { name: 'Go', category: 'PROGRAMMING' },
   ],
-  框架: [
+  后端框架: [
     { name: 'Spring', category: 'FRAMEWORK' },
     { name: 'SpringBoot', category: 'FRAMEWORK' },
+    { name: 'Spring MVC', category: 'FRAMEWORK' },
+    { name: 'MyBatis', category: 'FRAMEWORK' },
+    { name: 'MyBatis-Plus', category: 'FRAMEWORK' },
+  ],
+  前端技术: [
     { name: 'Vue', category: 'FRAMEWORK' },
+    { name: 'React', category: 'FRAMEWORK' },
+    { name: 'HTML/CSS', category: 'PROGRAMMING' },
+    { name: 'Vite', category: 'TOOL' },
   ],
   数据与中间件: [
     { name: 'MySQL', category: 'DATABASE' },
+    { name: 'PostgreSQL', category: 'DATABASE' },
     { name: 'Redis', category: 'MIDDLEWARE' },
+    { name: 'MongoDB', category: 'DATABASE' },
+    { name: 'RabbitMQ', category: 'MIDDLEWARE' },
+    { name: 'Kafka', category: 'MIDDLEWARE' },
+    { name: 'Elasticsearch', category: 'MIDDLEWARE' },
   ],
-  开发工具: [
+  开发与部署: [
     { name: 'Git', category: 'TOOL' },
+    { name: 'Maven', category: 'TOOL' },
     { name: 'Docker', category: 'TOOL' },
     { name: 'Linux', category: 'TOOL' },
+    { name: 'Nginx', category: 'TOOL' },
+    { name: 'Kubernetes', category: 'TOOL' },
+    { name: 'GitHub Actions', category: 'TOOL' },
+  ],
+  AI应用: [
+    { name: 'Spring AI', category: 'FRAMEWORK' },
+    { name: 'LangChain', category: 'FRAMEWORK' },
+    { name: 'RAG', category: 'OTHER' },
+    { name: 'Prompt Engineering', category: 'OTHER' },
   ],
 }
 
@@ -151,7 +180,7 @@ async function save() {
           <div class="form-grid">
             <el-form-item label="当前学历">
               <el-select v-model="form.education" placeholder="请选择学历">
-                <el-option v-for="item in ['专科', '本科', '硕士', '博士']" :key="item" :label="item" :value="item" />
+                <el-option v-for="item in educationOptions" :key="item" :label="item" :value="item" />
               </el-select>
             </el-form-item>
             <el-form-item label="专业">
@@ -159,7 +188,7 @@ async function save() {
             </el-form-item>
             <el-form-item label="年级">
               <el-select v-model="form.grade" placeholder="请选择年级">
-                <el-option v-for="item in ['大一', '大二', '大三', '大四', '研一', '研二', '研三']" :key="item" :label="item" :value="item" />
+                <el-option v-for="item in gradeOptions" :key="item" :label="item" :value="item" />
               </el-select>
             </el-form-item>
             <el-form-item label="预计毕业年份" prop="graduationYear">
@@ -318,14 +347,14 @@ async function save() {
 .skill-group h3 { margin: 0 0 10px; font-size: 14px; }
 .skill-row {
   display: grid;
-  grid-template-columns: 95px 1fr 45px;
+  grid-template-columns: minmax(115px, 1fr) auto 45px;
   align-items: center;
   gap: 10px;
   min-height: 42px;
   border-top: 1px dashed #d9e2ec;
 }
 
-.skill-row > span { font-size: 13px; font-weight: 600; }
+.skill-row > span { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .skill-row small { color: var(--muted); font-size: 11px; text-align: right; }
 .interest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
 
